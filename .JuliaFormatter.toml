@@ -1,0 +1,4 @@
+# Configuration of JuliaFormatter.jl, used by `make format` and `make format-check`
+# and by the formatter of the Julia extension for VS Code.
+style = "blue"
+margin = 120
