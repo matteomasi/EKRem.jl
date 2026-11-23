@@ -1,6 +1,9 @@
 # Julia environments (resolved from Project.toml [compat] by each user)
 Manifest*.toml
 
+# Machine-specific preferences (e.g. path of the PhreeqcRM library)
+LocalPreferences.toml
+
 # Coverage and allocation tracking
 *.jl.cov
 *.jl.*.cov
