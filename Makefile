@@ -6,8 +6,9 @@
 # JuliaFormatter) are installed by `make install-dev` in the shared Julia environment
 # `ekrem-dev`; they are not dependencies of EKRem.
 #
-# The PhreeqcRM tests require the path of the PhreeqcRM library, given in the environment
-# variable EKREM_PHREEQCRM or on the command line:
+# The PhreeqcRM tests require the PhreeqcRM library, set once with
+# `set_phreeqcrm_library(path)` (saved in LocalPreferences.toml). It can be overridden on
+# the command line:
 #     make test EKREM_PHREEQCRM=C:/path/to/PhreeqcRM.dll
 
 # Variables
