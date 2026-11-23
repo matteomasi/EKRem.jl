@@ -4,15 +4,58 @@ EKRem is a Julia package for the simulation and design of electrokinetic remedia
 
 Three models are available, and they are organised by spatial dimension: `Model1D` for columns and laboratory setups, and `Model2D` and `Model3D` for field applications.
 
-**Status:** pre-alpha. Only the package skeleton, the Scharfetter–Gummel flux and the first functions of the PhreeqcRM interface are available.
+**Status:** pre-alpha. `Model1D` solves the Nernst–Planck–Poisson equations with prescribed concentrations and potentials at both ends; the coupling with PhreeqcRM, current control, electrode compartments, `Model2D` and `Model3D` are not implemented yet.
+
+## Example
+
+Migration of a trace cation through a NaCl solution under an applied voltage of 1 V across a 10 cm column:
+
+```julia
+using EKRem
+
+species = [Species("Na+", 1, 1.33e-9), Species("Cl-", -1, 2.03e-9), Species("T+", 1, 1.0e-9)]
+background = Dict("Na+" => 100.0, "Cl-" => 100.0)                 # mol/m³
+
+model = Model1D(;
+    length=0.1,                                                     # m
+    grid=(h_min=1.0e-5, h_max=1.0e-4, growth=1.1),
+    species,
+    initial=background,
+    left=Reservoir(Dict("Na+" => 100.0, "Cl-" => 100.01, "T+" => 0.01); potential=1.0),
+    right=Reservoir(background; potential=0.0),
+    porosity=0.4,
+    tortuosity=0.5,
+)
+run!(model, [1.0e4, 1.0e5])                                         # s
+
+x = coordinates(model)
+c = concentration(model, "T+", 1.0e5)
+φ = electric_potential(model, 1.0e5)
+```
+
+## Examples
+
+Complete simulations are in the [`examples`](examples/) folder; the file names begin with the dimension of the model. Each example compares the results with an analytical solution and saves a figure in `examples/output/`:
+
+- `1D_binary_electrolyte.jl`: steady state of a binary electrolyte between two reservoirs at different concentrations and potentials, on three grids;
+- `1D_trace_migration.jl`: migration of a trace ion in a uniform electric field (Ogata–Banks solution).
+
+The examples have their own environment, which also contains the plotting package. They are run from the repository root, e.g.
+
+```console
+julia --project=examples examples/1D_trace_migration.jl
+```
+
+or all together with `make examples`.
 
 ## Development set-up
 
 The common development tasks are run with `make` (GNU Make); `make help` lists them:
 
 ```console
-make install-dev    # instantiate the environment and install the development tools
-make test           # run the test suite
+make install-dev    # instantiate the environments and install the development tools
+make test           # run the unit tests
+make examples       # run all examples
 make lint           # check package quality with Aqua.jl
 make format         # format the code with JuliaFormatter (settings in .JuliaFormatter.toml)
 ```
