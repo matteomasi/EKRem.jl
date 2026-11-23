@@ -26,11 +26,17 @@ pkg> instantiate
 pkg> test
 ```
 
-The PhreeqcRM shared library is not distributed with the package. Its path is given either in a script,
+## PhreeqcRM library
+
+The PhreeqcRM shared library is not distributed with the package. Its path is set once, in the Julia REPL with the project activated:
 
 ```julia
 using EKRem
 set_phreeqcrm_library("C:/path/to/PhreeqcRM.dll")
 ```
 
-or in the environment variable `EKREM_PHREEQCRM`. Without a library, the PhreeqcRM tests are skipped. By default, the tests read the database from `../database/phreeqc.dat` relative to the library; another file can be given in `EKREM_PHREEQC_DATABASE`.
+The path is saved as a preference in `LocalPreferences.toml` next to the active `Project.toml`, and it is used automatically in later sessions and by the tests. Calling the function in the global environment makes the setting apply to all projects. `set_phreeqcrm_library(path; save=false)` loads a library for the current session only, and `phreeqcrm_library()` returns the path in use.
+
+The library is selected in the following order of precedence: the library loaded in the current session, the environment variable `EKREM_PHREEQCRM`, and the saved preference.
+
+Without a library, the PhreeqcRM tests are skipped. By default, the tests read the database from `../database/phreeqc.dat` relative to the library; another file can be given in `EKREM_PHREEQC_DATABASE`.
