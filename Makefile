@@ -24,13 +24,17 @@ help:  ## Show this help message
 
 # Setup and Installation
 .PHONY: install-dev
-install-dev:  ## Instantiate the package environment and install the development tools
+install-dev:  ## Instantiate the package and examples environments and install the development tools
 	$(DEV) install
 
 # Testing
 .PHONY: test
-test:  ## Run the test suite
+test:  ## Run the unit tests
 	$(JULIA) --project=. -e "using Pkg; Pkg.test()"
+
+.PHONY: examples
+examples:  ## Run all examples (figures in examples/output)
+	$(DEV) examples
 
 .PHONY: coverage
 coverage:  ## Run the tests with coverage tracking; report src/ coverage and write lcov.info
