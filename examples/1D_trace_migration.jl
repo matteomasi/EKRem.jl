@@ -65,12 +65,7 @@ colours = ["#0072B2", "#D55E00", "#009E73"]
 markers = [:circle, :square, :diamond]
 sizes = [5, 4.3, 6.0]
 p = plot(;
-    xlabel="x (cm)",
-    ylabel="T⁺ concentration c/c₀",
-    xlims=(0, 4),
-    legend=:topright,
-    size=(600, 400),
-    margin=5Plots.mm,
+    xlabel="x (cm)", ylabel="T⁺ concentration c/c₀", xlims=(0, 4), legend=:topright, size=(600, 400), margin=5Plots.mm
 )
 println("    t (s)   x(c = c₀/2), EKRem   x(c = c₀/2), analytical   max |c − c_exact| / c₀")
 for (k, t) in enumerate(times)
@@ -84,9 +79,14 @@ for (k, t) in enumerate(times)
     )
     plot!(p, x .* 100, exact.(x, t) ./ c0; color=colours[k], label=@sprintf("analytical, t = %.0f h", t / 3600))
     scatter!(
-        p, x[1:4:end] .* 100, c[1:4:end] ./ c0;
+        p,
+        x[1:4:end] .* 100,
+        c[1:4:end] ./ c0;
         label=@sprintf("EKRem, t = %.0f h", t / 3600),
-        marker=markers[k], markersize=sizes[k], markercolor=RGBA(1, 1, 1, 0), markerstrokecolor=colours[k],
+        marker=markers[k],
+        markersize=sizes[k],
+        markercolor=RGBA(1, 1, 1, 0),
+        markerstrokecolor=colours[k],
     )
 end
 savefig(p, joinpath(output, "1D_trace_migration.png"))

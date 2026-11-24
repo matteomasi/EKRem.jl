@@ -95,10 +95,34 @@ model = models[end]
 x = coordinates(model)
 xf = range(0, L; length=400)
 p1 = plot(xf .* 1e3, c_exact.(xf); label="analytical", color=:black, xlabel="x (mm)", ylabel="c (mol/m³)")
-scatter!(p1, x[1:5:end] .* 1e3, concentration(model, "Na+", t_end)[1:5:end]; label="Na⁺ (EKRem)", markersize=6, marker=:square, markercolor=:grey)
-scatter!(p1, x[1:5:end] .* 1e3, concentration(model, "Cl-", t_end)[1:5:end]; label="Cl⁻ (EKRem)", markersize=4, marker=:circle, markercolor=:black)
+scatter!(
+    p1,
+    x[1:5:end] .* 1e3,
+    concentration(model, "Na+", t_end)[1:5:end];
+    label="Na⁺ (EKRem)",
+    markersize=6,
+    marker=:square,
+    markercolor=:grey,
+)
+scatter!(
+    p1,
+    x[1:5:end] .* 1e3,
+    concentration(model, "Cl-", t_end)[1:5:end];
+    label="Cl⁻ (EKRem)",
+    markersize=4,
+    marker=:circle,
+    markercolor=:black,
+)
 p2 = plot(xf .* 1e3, φ_exact.(xf); label="analytical", color=:black, xlabel="x (mm)", ylabel="φ (V)")
-scatter!(p2, x[1:5:end] .* 1e3, electric_potential(model, t_end)[1:5:end]; label="EKRem", markersize=6, marker=:circle, markercolor=:white)
+scatter!(
+    p2,
+    x[1:5:end] .* 1e3,
+    electric_potential(model, t_end)[1:5:end];
+    label="EKRem",
+    markersize=6,
+    marker=:circle,
+    markercolor=:white,
+)
 figure = plot(p1, p2; layout=(1, 2), size=(900, 350), margin=5Plots.mm)
 savefig(figure, joinpath(output, "1D_binary_electrolyte.png"))
 println("Figure saved in ", joinpath(output, "1D_binary_electrolyte.png"))
