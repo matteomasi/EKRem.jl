@@ -3,7 +3,7 @@
 
 Simulation of electrokinetic remediation. Multicomponent transport is described by the
 Nernst–Planck equations, the electric potential by the Poisson or the charge-conservation
-equation, and geochemical reactions are computed by PhreeqcRM.
+equation, and geochemical reactions are computed by PhreeqcRM ([`Chemistry`](@ref)).
 
 Models are organised by spatial dimension (`Model1D`, `Model2D`, `Model3D`).
 """
@@ -29,6 +29,7 @@ include("physics/boundaries.jl")
 include("transport.jl")
 include("models/model1d.jl")
 include("phreeqcrm/capi.jl")
+include("chemistry.jl")
 
 using .LibPhreeqcRM: set_phreeqcrm_library, phreeqcrm_library, PhreeqcRMError
 
@@ -41,6 +42,8 @@ export BoundaryCondition, Reservoir
 export Model1D, run!, coordinates, output_times, concentration, electric_potential, voltage, current_density
 export debye_ratio
 export set_phreeqcrm_library, phreeqcrm_library, PhreeqcRMError
+export Chemistry, aqueous_species, species_concentrations, set_species_concentrations!, component_concentrations
+export react!, selected_output
 
 # Precompilation workload: a quick simulation is run when the package is precompiled,
 # to speed up the first simulation of a session.
