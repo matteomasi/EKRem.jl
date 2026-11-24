@@ -15,15 +15,19 @@ between two boundaries at x = 0 (`left`) and x = `length` (`right`), in m.
 - `species`: vector of [`Species`](@ref).
 - `initial`: uniform initial pore-water concentrations (mol m⁻³), as a dictionary that maps
   species names to concentrations.
-- `left`, `right`: boundary conditions, e.g. [`Reservoir`](@ref).
-- `potential`: formulation of the potential equation ([`Poisson`](@ref)).
+- `left`, `right`: boundary conditions, e.g. [`Reservoir`](@ref). The potential must be
+  fixed at one boundary at least; a current density can be applied at the other
+  one with the [`ChargeConservation`](@ref) formulation.
+- `potential`: formulation of the potential equation: [`Poisson`](@ref),
+  [`ChargeConservation`](@ref) or [`FixedField`](@ref).
 - `porosity`, `tortuosity`, `relative_permittivity`: properties of the medium
   (see [`PorousMedium`](@ref)).
 - `temperature`: temperature (K).
 
 The initial and boundary compositions must be electroneutral. The model is run with
-[`run!`](@ref), and the results are obtained with [`concentration`](@ref) and
-[`electric_potential`](@ref) at the times in [`output_times`](@ref).
+[`run!`](@ref), and the results are obtained with [`concentration`](@ref),
+[`electric_potential`](@ref), [`voltage`](@ref) and [`current_density`](@ref) at the times
+in [`output_times`](@ref).
 """
 mutable struct Model1D
     x::Vector{Float64}
@@ -58,6 +62,7 @@ function Model1D(;
     names = [s.name for s in species]
     allunique(names) || throw(ArgumentError("Species names must be unique"))
     medium = PorousMedium(; porosity, tortuosity, relative_permittivity)
+    _check_electric_conditions(potential, left, right)
 
     c0 = concentration_vector(species, initial)
     cl = concentration_vector(species, left.concentrations)
@@ -74,21 +79,60 @@ function Model1D(;
     floor_c = 1.0e-9 * max(maximum(cmax), 1.0)
     scales = vcat(max.(cmax, floor_c), GAS_CONSTANT * temperature / FARADAY)
 
-    bvalues = hcat(vcat(cl, left.potential), vcat(cr, right.potential))
-    problem = TransportProblem(simplexgrid(x), species, medium, potential, bvalues, scales; temperature=temperature)
+    electric(b) = fixed_potential(b) ? b.potential : b.current_density
+    bvalues = hcat(vcat(cl, electric(left)), vcat(cr, electric(right)))
+    problem = TransportProblem(
+        simplexgrid(x),
+        species,
+        medium,
+        potential,
+        bvalues,
+        [fixed_potential(left), fixed_potential(right)],
+        scales;
+        temperature=temperature,
+    )
 
-    # Initial state: uniform concentrations, boundary values at the boundary nodes, and
-    # linear potential gradient (solution of the Poisson equation for an electroneutral solution)
+    # Initial state: uniform concentrations and boundary values at the boundary nodes. The
+    # potential is computed from the potential equation, starting from a linear profile
+    # (with an applied current density, the field is estimated from Ohm's law with the
+    # initial conductivity).
     nspecies = Base.length(species)
     state = zeros(nspecies + 1, Base.length(x))
     state[1:nspecies, :] .= c0
     state[1:nspecies, 1] .= cl
     state[1:nspecies, end] .= cr
-    state[end, :] .= left.potential .+ (right.potential - left.potential) .* x ./ length
+    state[end, :] .= _initial_potential(x, left, right, problem.data.Deff, [s.z for s in species], c0, temperature)
+    state = solve_potential(problem, state)
 
     return Model1D(
         x, collect(species), medium, temperature, potential, c0, left, right, problem, state, 0.0, [0.0], [copy(state)]
     )
+end
+
+function _check_electric_conditions(potential::PotentialModel, left::Reservoir, right::Reservoir)
+    fixed_potential(left) ||
+        fixed_potential(right) ||
+        throw(ArgumentError("The potential must be fixed at one boundary at least"))
+    fixed_potential(left) && fixed_potential(right) && return nothing
+    potential isa ChargeConservation || throw(
+        ArgumentError(
+            "An applied current density requires the ChargeConservation formulation, not $(nameof(typeof(potential)))",
+        ),
+    )
+    return nothing
+end
+
+function _initial_potential(x, left::Reservoir, right::Reservoir, Deff, z, c0, temperature)
+    L = x[end]
+    fixed_potential(left) &&
+        fixed_potential(right) &&
+        return left.potential .+ (right.potential - left.potential) .* x ./ L
+    σ = conductivity(c0, z, Deff; T=temperature)
+    σ > 0 || throw(ArgumentError("An applied current density requires a conducting initial solution"))
+    # A current density applied at the left boundary flows in the +x direction, and one
+    # applied at the right boundary in the −x direction
+    fixed_potential(right) && return right.potential .+ left.current_density / σ .* (L .- x)
+    return left.potential .+ right.current_density / σ .* x
 end
 
 function _coordinates(length::Real, grid::NamedTuple)
@@ -141,6 +185,8 @@ function Base.show(io::IO, ::MIME"text/plain", m::Model1D)
         m.temperature,
         " K",
     )
+    electric(b) = fixed_potential(b) ? "φ = $(b.potential) V" : "i = $(b.current_density) A/m²"
+    println(io, "  boundaries: left ", electric(m.left), ", right ", electric(m.right))
     return print(
         io, "  potential: ", nameof(typeof(m.potential)), "; λ_D,max / h_min = ", round(debye_ratio(m); sigdigits=3)
     )
@@ -220,3 +266,41 @@ end
 Electric potential (V) at the nodes, at output time `t` (s).
 """
 electric_potential(model::Model1D, t::Real) = model.results[_time_index(model, t)][end, :]
+
+"""
+    voltage(model, t) -> Float64
+
+Potential difference φ(0) − φ(L) (V) between the left and the right boundary at output
+time `t` (s).
+"""
+function voltage(model::Model1D, t::Real)
+    φ = electric_potential(model, t)
+    return φ[1] - φ[end]
+end
+
+"""
+    current_density(model, t) -> Vector{Float64}
+
+Electric current density i = F Σᵢ zᵢ Jᵢ (A m⁻², per unit cross-sectional area of the
+medium) in the +x direction, at output time `t` (s). The values refer to the midpoints
+between neighbouring nodes, `(x[1:end-1] .+ x[2:end]) ./ 2`, and are computed from the
+discrete fluxes of the transport equations.
+
+With the [`ChargeConservation`](@ref) formulation, the current density is uniform. With the
+[`Poisson`](@ref) formulation, the displacement current is not included; it is negligible
+where the Debye length is not resolved by the grid.
+"""
+function current_density(model::Model1D, t::Real)
+    u = model.results[_time_index(model, t)]
+    d = model.problem.data
+    iφ = d.nspecies + 1
+    i = zeros(Base.length(model.x) - 1)
+    for k in eachindex(i)
+        h = model.x[k + 1] - model.x[k]
+        Δψ = d.f_RT * (u[iφ, k + 1] - u[iφ, k])
+        for s in 1:(d.nspecies)
+            i[k] += d.z[s] * sg_flux(d.Deff[s], d.z[s], u[s, k], u[s, k + 1], Δψ) / h
+        end
+    end
+    return FARADAY .* i
+end

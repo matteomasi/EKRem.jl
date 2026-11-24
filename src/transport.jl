@@ -9,7 +9,12 @@
 #
 # Equations, per unit bulk volume:
 #     n ∂cᵢ/∂t + ∇·Jᵢ = 0,    Jᵢ = −Dᵢ* (∇cᵢ + zᵢ cᵢ ∇ψ),    Dᵢ* = n τ Dᵢ,  ψ = F φ / (R T)
-#     −∇·((ε_eff / F) ∇φ) = n Σᵢ zᵢ cᵢ          (Poisson equation divided by F)
+# and one of the following equations for the potential:
+#     −∇·((ε_eff / F) ∇φ) = n Σᵢ zᵢ cᵢ          Poisson equation divided by F
+#     ∇·(Σᵢ zᵢ Jᵢ) = 0                         charge conservation divided by F
+#     −∇·(∇φ) = 0                              fixed field (Laplace equation)
+# The formulation is selected at run time by a field of the callback data, so that all
+# formulations share the compiled code of the time integration.
 
 """
     PROGRESS_INTERVAL
@@ -21,24 +26,43 @@ It can be changed by setting the variable:
 """
 const PROGRESS_INTERVAL = Ref(0.5)
 
+# Codes of the formulations of the potential equation in NPPData
+const POISSON = 1
+const CHARGE_CONSERVATION = 2
+const FIXED_FIELD = 3
+
+formulation_code(::Poisson) = POISSON
+formulation_code(::ChargeConservation) = CHARGE_CONSERVATION
+formulation_code(::FixedField) = FIXED_FIELD
+
 "Parameters passed to the VoronoiFVM callbacks."
 struct NPPData
     nspecies::Int
+    formulation::Int            # POISSON, CHARGE_CONSERVATION or FIXED_FIELD
     porosity::Float64
     Deff::Vector{Float64}       # n τ D (m² s⁻¹)
     z::Vector{Float64}
     f_RT::Float64               # F / (R T) (V⁻¹)
     ε_F::Float64                # ε_eff / F (mol V⁻¹ m⁻¹)
-    bvalues::Matrix{Float64}    # Dirichlet values (unknown × boundary region)
+    bvalues::Matrix{Float64}    # boundary values (unknown × boundary region), see TransportProblem
+    fixed_potential::Vector{Bool}   # per boundary region: potential (true) or current density (false)
 end
 
 function npp_flux!(f, u, edge, d::NPPData)
     iφ = d.nspecies + 1
     Δψ = d.f_RT * (u[iφ, 2] - u[iφ, 1])
+    charge_flux = zero(Δψ)
     for i in 1:(d.nspecies)
         f[i] = sg_flux(d.Deff[i], d.z[i], u[i, 1], u[i, 2], Δψ)
+        charge_flux += d.z[i] * f[i]
     end
-    f[iφ] = d.ε_F * (u[iφ, 1] - u[iφ, 2])
+    if d.formulation == POISSON
+        f[iφ] = d.ε_F * (u[iφ, 1] - u[iφ, 2])
+    elseif d.formulation == CHARGE_CONSERVATION
+        f[iφ] = charge_flux
+    else
+        f[iφ] = u[iφ, 1] - u[iφ, 2]
+    end
     return nothing
 end
 
@@ -50,14 +74,23 @@ function npp_storage!(f, u, node, d::NPPData)
 end
 
 function npp_reaction!(f, u, node, d::NPPData)
-    f[d.nspecies + 1] = -d.porosity * sum(d.z[i] * u[i] for i in 1:(d.nspecies))
+    if d.formulation == POISSON
+        f[d.nspecies + 1] = -d.porosity * sum(d.z[i] * u[i] for i in 1:(d.nspecies))
+    end
     return nothing
 end
 
 function npp_bcondition!(f, u, bnode, d::NPPData)
     ireg = bnode.region
-    for i in 1:(d.nspecies + 1)
+    for i in 1:(d.nspecies)
         boundary_dirichlet!(f, u, bnode, i, ireg, d.bvalues[i, ireg])
+    end
+    iφ = d.nspecies + 1
+    if d.fixed_potential[ireg]
+        boundary_dirichlet!(f, u, bnode, iφ, ireg, d.bvalues[iφ, ireg])
+    else
+        # Applied current density i: inflow i / F of the charge equation
+        boundary_neumann!(f, u, bnode, iφ, ireg, d.bvalues[iφ, ireg] / FARADAY)
     end
     return nothing
 end
@@ -73,30 +106,35 @@ struct TransportProblem
 end
 
 """
-    TransportProblem(grid, species, medium, ::Poisson, bvalues, scales; temperature)
+    TransportProblem(grid, species, medium, potential, bvalues, fixed_potential, scales; temperature)
 
-Assemble the Nernst–Planck–Poisson system. `bvalues` is a (N+1) × (number of boundary
-regions) matrix of Dirichlet values for the concentrations and the potential, and `scales`
+Assemble the Nernst–Planck system with the equation `potential` for the electric
+potential. `bvalues` is a (N+1) × (number of boundary regions) matrix of boundary values:
+Dirichlet values of the concentrations, and either the potential (V) or the current density
+applied at the boundary (A m⁻²), as indicated by the vector `fixed_potential`. `scales`
 contains the characteristic scale of each unknown.
 """
 function TransportProblem(
     grid::ExtendableGrid,
     species::AbstractVector{Species},
     medium::PorousMedium,
-    ::Poisson,
+    potential::PotentialModel,
     bvalues::AbstractMatrix,
+    fixed_potential::AbstractVector{Bool},
     scales::AbstractVector;
     temperature::Real,
 )
     nspecies = length(species)
     data = NPPData(
         nspecies,
+        formulation_code(potential),
         medium.porosity,
         [effective_diffusion(medium, s) for s in species],
         [Float64(s.z) for s in species],
         FARADAY / (GAS_CONSTANT * temperature),
         effective_permittivity(medium) / FARADAY,
         Matrix{Float64}(bvalues),
+        Vector{Bool}(fixed_potential),
     )
     system = VoronoiFVM.System(
         grid;
@@ -156,6 +194,65 @@ function time_integrator(solver::Symbol)
 end
 
 """
+    ode_function(problem, u0, t0) -> (state, f)
+
+VoronoiFVM system state and ODE function (right-hand side, Jacobian and mass matrix) of
+the semi-discrete transport problem.
+"""
+function ode_function(problem::TransportProblem, u0::AbstractMatrix, t0)
+    nunknowns = size(u0, 1)
+    state = VoronoiFVM.SystemState(problem.system)
+    # The sparsity pattern of the Jacobian is detected at a state with positive
+    # concentrations: where all concentrations vanish, the derivatives of the fluxes with
+    # respect to the potential vanish too, and the pattern would be incomplete.
+    jacval = Matrix{Float64}(u0)
+    jacval[1:(nunknowns - 1), :] .= problem.scales[1:(nunknowns - 1)]
+    f = SciMLBase.ODEFunction(state; jacval=vec(jacval), tjac=t0)
+    return state, f
+end
+
+"""
+    solve_potential(problem, u0, t0=0.0) -> Matrix{Float64}
+
+Copy of the state `u0` (unknowns × nodes) with the potential computed by
+[`solve_potential!`](@ref).
+"""
+function solve_potential(problem::TransportProblem, u0::AbstractMatrix, t0=0.0)
+    state, f = ode_function(problem, u0, t0)
+    u = solve_potential!(vec(Matrix{Float64}(u0)), problem, f, state, t0)
+    return reshape(u, size(u0))
+end
+
+"""
+    solve_potential!(u, problem, f, state, t) -> u
+
+Solve the potential equation for the concentrations in the state vector `u` (Newton
+iteration), and replace the potential in `u` by the solution. Not applied with the
+Poisson formulation, where the potential is left as computed by the time integration.
+"""
+function solve_potential!(u, problem::TransportProblem, f, state, t; maxiters=50)
+    # With the Poisson formulation, the potential is set by charge imbalances far below the
+    # tolerances, which this solution would amplify.
+    problem.data.formulation == POISSON && return u
+    nunknowns = problem.data.nspecies + 1
+    scale = problem.scales[end]
+    iφ = nunknowns:nunknowns:length(u)
+    rhs = similar(u)
+    jac = copy(f.jac_prototype)
+    for _ in 1:maxiters
+        f.f(rhs, u, state, t)       # rhs = −residual, which vanishes in the rows of the potential
+        f.jac(jac, u, state, t)
+        δ = jac[iφ, iφ] \ rhs[iφ]
+        # Damping limits the change of the potential to 10 thermal voltages per iteration
+        δmax = maximum(abs, δ; init=0.0)
+        damping = min(1.0, 10 * scale / δmax)
+        u[iφ] .-= damping .* δ
+        damping == 1 && δmax <= 1.0e-10 * scale && return u
+    end
+    return error("The potential equation could not be solved at t = $t s (no convergence in $maxiters iterations)")
+end
+
+"""
     solve_transport(problem, u0, times; solver=:Rodas5P, reltol=1e-4, abstol=1e-6, progress=false)
         -> Vector{Matrix{Float64}}
 
@@ -163,16 +260,19 @@ Integrate the transport problem from the state `u0` (unknowns × nodes) at `time
 return the states at all `times` (the first one being `u0`).
 
 The semi-discrete system is a differential-algebraic system in mass-matrix form (the
-Poisson equation has no storage term). It is integrated by the method `solver` of
+equation of the potential has no storage term). It is integrated by the method `solver` of
 OrdinaryDiffEq.jl (one of [`SOLVERS`](@ref)), with adaptive time steps and error control;
 the time steps end exactly at `times`. The error tolerances are `reltol` (relative) and
 `abstol` times the largest concentration of each species (absolute).
 
 The potential is excluded from the error control. It is an algebraic variable, determined
-at each instant by the concentrations through the Poisson equation, so its accuracy
-follows from theirs. Where the Debye length is not resolved, the potential responds to
+at each instant by the concentrations, so its accuracy follows from theirs. With the
+Poisson formulation, where the Debye length is not resolved, the potential responds to
 charge on the time scale ε/σ (of the order of 1e-9 s), and including it in the error
-estimate would force time steps of that size after any perturbation.
+estimate would force time steps of that size after any perturbation. With the other
+formulations, the time integration solves the potential equation only approximately, and
+the current density is sensitive to the remaining error; the potential of the initial and
+the returned states is therefore computed by [`solve_potential!`](@ref).
 
 The method does not guarantee non-negative concentrations. Undershoots smaller than the
 absolute tolerance are accepted; time steps that produce larger negative concentrations
@@ -193,14 +293,9 @@ function solve_transport(
     algorithm = time_integrator(solver)
     t = collect(Float64, times)
     nunknowns, nnodes = size(u0)
-    state = VoronoiFVM.SystemState(problem.system)
-    # The sparsity pattern of the Jacobian is detected at a state with positive
-    # concentrations: where all concentrations vanish, the derivatives of the fluxes with
-    # respect to the potential vanish too, and the pattern would be incomplete.
-    jacval = Matrix{Float64}(u0)
-    jacval[1:(nunknowns - 1), :] .= problem.scales[1:(nunknowns - 1)]
-    f = SciMLBase.ODEFunction(state; jacval=vec(jacval), tjac=t[1])
-    prob = SciMLBase.ODEProblem(f, vec(Matrix{Float64}(u0)), (t[1], t[end]), state)
+    state, f = ode_function(problem, u0, t[1])
+    u_start = solve_potential!(vec(Matrix{Float64}(u0)), problem, f, state, t[1])
+    prob = SciMLBase.ODEProblem(f, u_start, (t[1], t[end]), state)
     atol = repeat(problem.scales .* abstol, nnodes)
     atol[nunknowns:nunknowns:end] .= Inf   # potential excluded from the error control
     # Lower bound of each unknown: −abstol for the concentrations, none for the potential
@@ -216,11 +311,14 @@ function solve_transport(
         saveat=t,
         tstops=t,
         callback=progress ? progress_callback(report) : nothing,
+        # The initial potential is computed above; the default check would compare
+        # the residuals of the Dirichlet rows (penalty method) with the tolerances.
+        initializealg=SciMLBase.NoInit(),
     )
     if !SciMLBase.successful_retcode(sol)
         progress && report.last > 0 && println(report.io)
         error("The time integration stopped at t = $(sol.t[end]) s (return code $(sol.retcode))")
     end
     progress && show_progress!(report, sol.t[end]; final=true)
-    return [reshape(u, nunknowns, nnodes) for u in sol.u]
+    return [reshape(solve_potential!(u, problem, f, state, tk), nunknowns, nnodes) for (u, tk) in zip(sol.u, sol.t)]
 end

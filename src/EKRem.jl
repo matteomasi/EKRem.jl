@@ -16,9 +16,10 @@ using OrdinaryDiffEqRosenbrock: Rodas5P
 using PrecompileTools: @compile_workload, @setup_workload
 using Printf: @sprintf
 using SciMLBase: SciMLBase
-using VoronoiFVM: VoronoiFVM, boundary_dirichlet!, fbernoulli
+using VoronoiFVM: VoronoiFVM, boundary_dirichlet!, boundary_neumann!, fbernoulli
 
 include("constants.jl")
+include("electrolyte.jl")
 include("species.jl")
 include("porousmedium.jl")
 include("grids.jl")
@@ -32,18 +33,19 @@ include("phreeqcrm/capi.jl")
 using .LibPhreeqcRM: set_phreeqcrm_library, phreeqcrm_library, PhreeqcRMError
 
 export FARADAY, GAS_CONSTANT, VACUUM_PERMITTIVITY, WATER_RELATIVE_PERMITTIVITY
-export debye_length, charge_relaxation_time
+export debye_length, conductivity, charge_relaxation_time
 export Species, PorousMedium, grid_refined
 export sg_flux
-export PotentialModel, Poisson
+export PotentialModel, Poisson, ChargeConservation, FixedField
 export BoundaryCondition, Reservoir
-export Model1D, run!, coordinates, output_times, concentration, electric_potential, debye_ratio
+export Model1D, run!, coordinates, output_times, concentration, electric_potential, voltage, current_density
+export debye_ratio
 export set_phreeqcrm_library, phreeqcrm_library, PhreeqcRMError
 
 # Precompilation workload: a quick simulation is run when the package is precompiled,
 # to speed up the first simulation of a session.
 @setup_workload begin
-    function workload_model(n)
+    function workload_model(n; potential=Poisson(), current=false)
         species = [Species("S$i", isodd(i) ? 1 : -1, 1.0e-9) for i in 1:n]
         # Equal concentrations of cations and anions (the last species is absent for odd n)
         c(value) = Dict(s.name => (iseven(n) || i < n ? value : 0.0) for (i, s) in enumerate(species))
@@ -52,8 +54,9 @@ export set_phreeqcrm_library, phreeqcrm_library, PhreeqcRMError
             grid=(h_min=1.0e-4, h_max=2.0e-4),
             species=species,
             initial=c(1.0),
-            left=Reservoir(c(1.0); potential=0.1),
+            left=current ? Reservoir(c(1.0); current_density=1.0) : Reservoir(c(1.0); potential=0.1),
             right=Reservoir(c(2.0); potential=0.0),
+            potential,
         )
     end
     @compile_workload begin
@@ -67,7 +70,11 @@ export set_phreeqcrm_library, phreeqcrm_library, PhreeqcRMError
         run!(model, [2.0]; solver=:FBDF, progress=false)
         concentration(model, "S1", 2.0)
         electric_potential(model, 2.0)
+        voltage(model, 2.0)
+        current_density(model, 2.0)
         sprint(show, MIME("text/plain"), model)
+        run!(workload_model(2; potential=ChargeConservation(), current=true), [1.0]; progress=false)
+        run!(workload_model(2; potential=FixedField()), [1.0]; progress=false)
     end
 end
 
