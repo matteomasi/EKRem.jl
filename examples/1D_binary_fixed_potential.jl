@@ -1,10 +1,11 @@
 #=
-EKRem example: binary electrolyte at steady state
+EKRem example: 1D setup, with binary electrolyte at steady state, under fixed applied voltage.
 
-A 1 cm column of a water-saturated porous medium (porosity 0.4, tortuosity factor 0.5)
-separates two reservoirs of NaCl at 10 and 100 mol/m³, kept at 0.5 V and 0 V. The model is
-run until the steady state is reached, and the result is compared with the analytical
-solution of the electroneutral steady state:
+The setup consists of a 1 cm column of a water-saturated porous medium, with porosity of 0.4, 
+and tortuosity factor of 0.5. The anolyte and catholyte are filled with NaCl at 10 and 100 mol/m³, 
+respectively. The applied voltages are 0.5 V at the anode, and 0 V at the cathode. 
+The model is run until the steady state is reached. The result is compared with the analytical 
+at the steady state:
 
     c(x) = c_L + (c_R − c_L) x / L
     φ(x) = φ_L + (φ_R − φ_L) ln(c(x) / c_L) / ln(c_R / c_L)
@@ -23,7 +24,7 @@ depends neither on them nor on the porosity and the tortuosity factor. The compa
 repeated on three grids to show the convergence (second-order) of the discretisation.
 
 Run from the repository root:
-    julia --project=examples examples/1D_binary_electrolyte.jl
+    julia --project=examples examples/1D_binary_fixed_potential.jl
 =#
 
 using EKRem
@@ -100,7 +101,7 @@ scatter!(
     x[1:5:end] .* 1e3,
     concentration(model, "Na+", t_end)[1:5:end];
     label="Na⁺ (EKRem)",
-    markersize=6,
+    markersize=5,
     marker=:square,
     markercolor=:grey,
 )
@@ -119,10 +120,10 @@ scatter!(
     x[1:5:end] .* 1e3,
     electric_potential(model, t_end)[1:5:end];
     label="EKRem",
-    markersize=6,
+    markersize=5,
     marker=:circle,
     markercolor=:white,
 )
 figure = plot(p1, p2; layout=(1, 2), size=(900, 350), margin=5Plots.mm)
-savefig(figure, joinpath(output, "1D_binary_electrolyte.png"))
-println("Figure saved in ", joinpath(output, "1D_binary_electrolyte.png"))
+savefig(figure, joinpath(output, "1D_binary_fixed_potential.png"))
+println("Figure saved in ", joinpath(output, "1D_binary_fixed_potential.png"))
