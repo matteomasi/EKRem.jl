@@ -14,6 +14,9 @@ lcov.info
 # Documentation build (Documenter.jl)
 docs/build/
 
+# Log file written by PhreeqcRM in the working directory
+phreeqc.log
+
 # Output of the examples (figures)
 examples/output/
 
