@@ -40,12 +40,8 @@ export BoundaryCondition, Reservoir
 export Model1D, run!, coordinates, output_times, concentration, electric_potential, debye_ratio
 export set_phreeqcrm_library, phreeqcrm_library, PhreeqcRMError
 
-# Precompilation workload: a small simulation is run when the package is precompiled, so
-# that the compiled code of the model and of the time integration is stored with the
-# package and the first simulation of a session does not have to compile it.
-# The code that evaluates the fluxes is specialised on the number of species (through the
-# automatic differentiation of the Jacobian), so the workload covers 2 to 5 species; other
-# numbers are compiled at their first use in a session (about 1 s each).
+# Precompilation workload: a quick simulation is run when the package is precompiled,
+# to speed up the first simulation of a session.
 @setup_workload begin
     function workload_model(n)
         species = [Species("S$i", isodd(i) ? 1 : -1, 1.0e-9) for i in 1:n]
