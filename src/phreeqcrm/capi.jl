@@ -176,6 +176,60 @@ function RM_CloseFiles(id::Integer)
     return _check(id, s, :RM_CloseFiles)
 end
 
+"Print (or not) PhreeqcRM messages on the screen; errors are always available from `RM_GetErrorString`."
+function RM_SetScreenOn(id::Integer, tf::Bool)
+    s = @ccall $(_fptr(:RM_SetScreenOn))(id::Cint, tf::Cint)::Cint
+    return _check(id, s, :RM_SetScreenOn)
+end
+
+"Include (or not) H2O as a component, in addition to the total H and O."
+function RM_SetComponentH2O(id::Integer, tf::Bool)
+    s = @ccall $(_fptr(:RM_SetComponentH2O))(id::Cint, tf::Cint)::Cint
+    return _check(id, s, :RM_SetComponentH2O)
+end
+
+"""
+    RM_UseSolutionDensityVolume(id, tf)
+
+Convert between moles and concentrations with the solution volume computed by PHREEQC
+(`true`, default of PhreeqcRM) or with the volume porosity × saturation × representative
+volume of the cell (`false`).
+"""
+function RM_UseSolutionDensityVolume(id::Integer, tf::Bool)
+    s = @ccall $(_fptr(:RM_UseSolutionDensityVolume))(id::Cint, tf::Cint)::Cint
+    return _check(id, s, :RM_UseSolutionDensityVolume)
+end
+
+function _set_option(id::Integer, func::Symbol, option::Integer)
+    s = @ccall $(_fptr(func))(id::Cint, option::Cint)::Cint
+    return _check(id, s, func)
+end
+
+# Units of the solution: 1 = mg/L, 2 = mol/L, 3 = kg/kgs. Units of the other reactants:
+# 0 = mol/L of cell, 1 = mol/L of water, 2 = mol/L of rock.
+RM_SetUnitsSolution(id::Integer, option::Integer) = _set_option(id, :RM_SetUnitsSolution, option)
+RM_SetUnitsPPassemblage(id::Integer, option::Integer) = _set_option(id, :RM_SetUnitsPPassemblage, option)
+RM_SetUnitsExchange(id::Integer, option::Integer) = _set_option(id, :RM_SetUnitsExchange, option)
+RM_SetUnitsSurface(id::Integer, option::Integer) = _set_option(id, :RM_SetUnitsSurface, option)
+RM_SetUnitsGasPhase(id::Integer, option::Integer) = _set_option(id, :RM_SetUnitsGasPhase, option)
+RM_SetUnitsSSassemblage(id::Integer, option::Integer) = _set_option(id, :RM_SetUnitsSSassemblage, option)
+RM_SetUnitsKinetics(id::Integer, option::Integer) = _set_option(id, :RM_SetUnitsKinetics, option)
+
+function _set_cell_values(id::Integer, func::Symbol, values::AbstractVector{<:Real})
+    length(values) == RM_GetGridCellCount(id) || throw(ArgumentError("$func: one value per cell is required"))
+    v = Vector{Cdouble}(values)
+    s = @ccall $(_fptr(func))(id::Cint, v::Ptr{Cdouble})::Cint
+    return _check(id, s, func)
+end
+
+# Properties of the cells, one value per cell: porosity, saturation, and representative
+# volume (L)
+RM_SetPorosity(id::Integer, por::AbstractVector{<:Real}) = _set_cell_values(id, :RM_SetPorosity, por)
+RM_SetSaturationUser(id::Integer, sat::AbstractVector{<:Real}) = _set_cell_values(id, :RM_SetSaturationUser, sat)
+function RM_SetRepresentativeVolume(id::Integer, rv::AbstractVector{<:Real})
+    return _set_cell_values(id, :RM_SetRepresentativeVolume, rv)
+end
+
 # ------------------------------------------------------------------------------------------
 # Running PHREEQC input
 
@@ -231,6 +285,13 @@ function RM_GetComponent(id::Integer, num::Integer; maxlen::Integer=256)
     end
 end
 
+"Number of components found by [`RM_FindComponents`](@ref)."
+function RM_GetComponentCount(id::Integer)
+    n = @ccall $(_fptr(:RM_GetComponentCount))(id::Cint)::Cint
+    _check(id, n, :RM_GetComponentCount)
+    return Int(n)
+end
+
 function RM_GetGridCellCount(id::Integer)
     n = @ccall $(_fptr(:RM_GetGridCellCount))(id::Cint)::Cint
     _check(id, n, :RM_GetGridCellCount)
@@ -263,6 +324,31 @@ end
 function RM_RunCells(id::Integer)
     s = @ccall $(_fptr(:RM_RunCells))(id::Cint)::Cint
     return _check(id, s, :RM_RunCells)
+end
+
+"Set the simulation time (s) at the end of the reaction step."
+function RM_SetTime(id::Integer, time::Real)
+    s = @ccall $(_fptr(:RM_SetTime))(id::Cint, time::Cdouble)::Cint
+    return _check(id, s, :RM_SetTime)
+end
+
+"Set the length of the reaction step (s), over which the kinetic reactions are integrated."
+function RM_SetTimeStep(id::Integer, time_step::Real)
+    s = @ccall $(_fptr(:RM_SetTimeStep))(id::Cint, time_step::Cdouble)::Cint
+    return _check(id, s, :RM_SetTimeStep)
+end
+
+"""
+    RM_GetConcentrations(id) -> Matrix{Float64}
+
+Concentrations of all components in all cells, as a (cells × components) matrix, in the
+units set by `RM_SetUnitsSolution`. The array passed to the C function is allocated here.
+"""
+function RM_GetConcentrations(id::Integer)
+    c = zeros(Float64, RM_GetGridCellCount(id), RM_GetComponentCount(id))
+    s = @ccall $(_fptr(:RM_GetConcentrations))(id::Cint, c::Ptr{Cdouble})::Cint
+    _check(id, s, :RM_GetConcentrations)
+    return c
 end
 
 # ------------------------------------------------------------------------------------------
@@ -375,6 +461,21 @@ function RM_GetSpeciesConcentrations(id::Integer)
     s = @ccall $(_fptr(:RM_GetSpeciesConcentrations))(id::Cint, c::Ptr{Cdouble})::Cint
     _check(id, s, :RM_GetSpeciesConcentrations)
     return c
+end
+
+"""
+    RM_SpeciesConcentrations2Module(id, c)
+
+Transfer the concentrations (mol L⁻¹) of all aqueous species in all cells, given as a
+(cells × species) matrix, to the module. The component totals of each cell are computed
+from the species concentrations.
+"""
+function RM_SpeciesConcentrations2Module(id::Integer, c::AbstractMatrix{<:Real})
+    dims = (RM_GetGridCellCount(id), RM_GetSpeciesCount(id))
+    size(c) == dims || throw(ArgumentError("The concentrations must be a $(dims[1]) × $(dims[2]) matrix"))
+    m = Matrix{Cdouble}(c)
+    s = @ccall $(_fptr(:RM_SpeciesConcentrations2Module))(id::Cint, m::Ptr{Cdouble})::Cint
+    return _check(id, s, :RM_SpeciesConcentrations2Module)
 end
 
 """
