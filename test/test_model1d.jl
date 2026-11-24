@@ -168,3 +168,35 @@ end
     @test_throws ArgumentError controlled(FixedField())
     @test_throws ArgumentError controlled(ChargeConservation(); right=current)          # no fixed potential
 end
+
+@testset "Residual of the transport equations" begin
+    # The residual evaluated by EKRem (without derivatives) agrees with the assembly of
+    # VoronoiFVM, for the three formulations and for electrode compartments
+    c = Dict("Na+" => 10.0, "Cl-" => 10.0, "OH-" => 1.0e-3)
+    species = [SPECIES; Species("H+", 1, 9.31e-9)]
+    c["H+"] = 1.0e-3
+    models = [
+        small_model(),
+        small_model(; potential=FixedField()),
+        Model1D(;
+            length=0.01,
+            grid=collect(range(0, 0.01; length=21)),
+            species,
+            initial=c,
+            left=Compartment(c; volume=1.0e-4, flow=1.0e-7, current_density=5.0),
+            right=Compartment(c; volume=1.0e-4, potential=0.0),
+            potential=ChargeConservation(),
+            area=1.0e-3,
+        ),
+    ]
+    for model in models
+        u = copy(model.state)
+        u[1:(end - 1), :] .*= 1 .+ 0.1 .* sin.((1:(size(u, 1) - 1)) .+ 7 .* (1:size(u, 2))')   # perturbed state
+        u[end, :] .+= 0.01 .* cos.(1:size(u, 2))
+        state, f = EKRem.ode_function(model.problem, u, 0.0)
+        r, r_vfvm = similar(vec(u)), similar(vec(u))
+        f.f(r, vec(u), state, 0.0)
+        EKRem.VoronoiFVM.eval_rhs!(r_vfvm, vec(u), state, 0.0)
+        @test r ≈ r_vfvm rtol = 1.0e-12
+    end
+end

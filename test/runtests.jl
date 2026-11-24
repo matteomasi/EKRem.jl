@@ -8,4 +8,6 @@ using Test
     include("test_model1d.jl")
     include("test_phreeqcrm_capi.jl")
     include("test_chemistry.jl")
+    include("test_coupling.jl")
+    include("test_compartments.jl")
 end
