@@ -62,9 +62,16 @@ function install()
     return nothing
 end
 
-"Run all examples (examples/*.jl), each in its own Julia process with the examples environment."
+"""
+Run all examples (examples/*.jl), each in its own Julia process with the examples
+environment. The environment is resolved first, so that changes of the dependencies of
+EKRem are taken into account.
+"""
 function examples()
     dir = joinpath(ROOT, "examples")
+    Pkg.activate(dir)
+    Pkg.resolve()
+    Pkg.instantiate()
     scripts = sort(filter(f -> endswith(f, ".jl"), readdir(dir)))
     failed = String[]
     for script in scripts
