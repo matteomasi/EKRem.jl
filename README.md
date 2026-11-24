@@ -42,7 +42,8 @@ Complete simulations are in the [`examples`](examples/) folder; the file names b
 
 - `1D_binary_fixed_potential.jl`: steady state of a binary electrolyte between two reservoirs at different concentrations and potentials, on three grids;
 - `1D_binary_fixed_current.jl`: the same column under a fixed current density (charge-conservation formulation): potential at the anode as a function of time, and steady state;
-- `1D_trace_migration.jl`: migration of a trace ion in a uniform electric field (Ogata–Banks solution).
+- `1D_trace_migration.jl`: migration of a trace ion in a uniform electric field (Ogata–Banks solution);
+- `1D_benchmark_krabbenhoft.jl`: migration test with four monovalent ions (Na⁺, Cl⁻, K⁺, OH⁻) under a fixed electric potential difference, Nernst–Planck–Poisson equations: transient profiles, and steady state compared with the analytical solution of Krabbenhøft and Krabbenhøft (2008).
 
 The examples have their own environment, which also contains the plotting package. They are run from the repository root, e.g.
 
