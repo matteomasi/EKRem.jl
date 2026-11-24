@@ -9,7 +9,12 @@
 #
 # Equations, per unit bulk volume:
 #     n ∂cᵢ/∂t + ∇·Jᵢ = 0,    Jᵢ = −Dᵢ* (∇cᵢ + zᵢ cᵢ ∇ψ),    Dᵢ* = n τ Dᵢ,  ψ = F φ / (R T)
-# and one of the following equations for the potential:
+# At a boundary with an electrode compartment (well-mixed solution of volume V per
+# cross-sectional area A), the boundary node represents the compartment:
+#     (V/A) ∂cᵢ/∂t + Jᵢ·ν + (Q/A) cᵢ = Rᵢ / A
+# with ν the outward normal of the compartment toward the column, Q the flushing rate and Rᵢ
+# the production by electrolysis.
+# One of the following equations is solved for the potential:
 #     −∇·((ε_eff / F) ∇φ) = n Σᵢ zᵢ cᵢ          Poisson equation divided by F
 #     ∇·(Σᵢ zᵢ Jᵢ) = 0                         charge conservation divided by F
 #     −∇·(∇φ) = 0                              fixed field (Laplace equation)
@@ -46,6 +51,10 @@ struct NPPData
     ε_F::Float64                # ε_eff / F (mol V⁻¹ m⁻¹)
     bvalues::Matrix{Float64}    # boundary values (unknown × boundary region), see TransportProblem
     fixed_potential::Vector{Bool}   # per boundary region: potential (true) or current density (false)
+    compartment::Vector{Bool}       # per boundary region: electrode compartment (true) or reservoir
+    depth::Vector{Float64}          # compartment volume per cross-sectional area V/A (m)
+    flushing::Vector{Float64}       # flushing rate per cross-sectional area Q/A (m s⁻¹)
+    production::Matrix{Float64}     # production by electrolysis R/A (mol m⁻² s⁻¹), species × region
 end
 
 function npp_flux!(f, u, edge, d::NPPData)
@@ -80,39 +89,65 @@ function npp_reaction!(f, u, node, d::NPPData)
     return nothing
 end
 
-function npp_bcondition!(f, u, bnode, d::NPPData)
+function npp_bstorage!(f, u, bnode, d::NPPData)
     ireg = bnode.region
-    for i in 1:(d.nspecies)
-        boundary_dirichlet!(f, u, bnode, i, ireg, d.bvalues[i, ireg])
-    end
-    iφ = d.nspecies + 1
-    if d.fixed_potential[ireg]
-        boundary_dirichlet!(f, u, bnode, iφ, ireg, d.bvalues[iφ, ireg])
-    else
-        # Applied current density i: inflow i / F of the charge equation
-        boundary_neumann!(f, u, bnode, iφ, ireg, d.bvalues[iφ, ireg] / FARADAY)
+    if d.compartment[ireg]
+        for i in 1:(d.nspecies)
+            f[i] = d.depth[ireg] * u[i]
+        end
     end
     return nothing
 end
 
+npp_bcondition!(f, u, bnode, d::NPPData) = boundary_terms!(f, u, bnode.region, d)
+
+# Terms of the boundary region `ireg`. Fixed values (Dirichlet conditions) are imposed by a
+# penalty, as in VoronoiFVM.
+function boundary_terms!(f, u, ireg, d::NPPData)
+    for i in 1:(d.nspecies)
+        if d.compartment[ireg]
+            f[i] += d.flushing[ireg] * u[i] - d.production[i, ireg]
+        else
+            f[i] += PENALTY * (u[i] - d.bvalues[i, ireg])
+        end
+    end
+    iφ = d.nspecies + 1
+    if d.fixed_potential[ireg]
+        f[iφ] += PENALTY * (u[iφ] - d.bvalues[iφ, ireg])
+    else
+        # Applied current density i: inflow i / F of the charge equation
+        f[iφ] -= d.bvalues[iφ, ireg] / FARADAY
+    end
+    return nothing
+end
+
+const PENALTY = VoronoiFVM.Dirichlet(Float64)
+
 """
-Nernst–Planck–Poisson problem on a grid: VoronoiFVM system, parameters and characteristic
-scales of the unknowns (used for the error tolerances of the time integration).
+Nernst–Planck–Poisson problem on a grid: VoronoiFVM system, parameters, characteristic
+scales of the unknowns (used for the error tolerances of the time integration), and node
+coordinates of the one-dimensional grid.
 """
 struct TransportProblem
     system::VoronoiFVM.System
     data::NPPData
     scales::Vector{Float64}
+    x::Vector{Float64}
 end
 
 """
-    TransportProblem(grid, species, medium, potential, bvalues, fixed_potential, scales; temperature)
+    TransportProblem(grid, species, medium, potential, bvalues, fixed_potential, scales;
+                     temperature, depth, flushing, production)
 
 Assemble the Nernst–Planck system with the equation `potential` for the electric
 potential. `bvalues` is a (N+1) × (number of boundary regions) matrix of boundary values:
 Dirichlet values of the concentrations, and either the potential (V) or the current density
 applied at the boundary (A m⁻²), as indicated by the vector `fixed_potential`. `scales`
 contains the characteristic scale of each unknown.
+
+Boundary regions with a positive `depth` (V/A, m) are electrode compartments, with the
+flushing rate `flushing` (Q/A, m s⁻¹) and the production `production` (R/A, mol m⁻² s⁻¹,
+species × region); their concentrations are not fixed.
 """
 function TransportProblem(
     grid::ExtendableGrid,
@@ -123,6 +158,9 @@ function TransportProblem(
     fixed_potential::AbstractVector{Bool},
     scales::AbstractVector;
     temperature::Real,
+    depth::AbstractVector=zeros(size(bvalues, 2)),
+    flushing::AbstractVector=zeros(size(bvalues, 2)),
+    production::AbstractMatrix=zeros(length(species), size(bvalues, 2)),
 )
     nspecies = length(species)
     data = NPPData(
@@ -135,6 +173,10 @@ function TransportProblem(
         effective_permittivity(medium) / FARADAY,
         Matrix{Float64}(bvalues),
         Vector{Bool}(fixed_potential),
+        depth .> 0,
+        Vector{Float64}(depth),
+        Vector{Float64}(flushing),
+        Matrix{Float64}(production),
     )
     system = VoronoiFVM.System(
         grid;
@@ -143,10 +185,12 @@ function TransportProblem(
         storage=npp_storage!,
         reaction=npp_reaction!,
         bcondition=npp_bcondition!,
+        bstorage=npp_bstorage!,
         data=data,
         unknown_storage=:dense,
     )
-    return TransportProblem(system, data, Vector{Float64}(scales))
+    x = vec(grid[ExtendableGrids.Coordinates])
+    return TransportProblem(system, data, Vector{Float64}(scales), x)
 end
 
 # Progress report
@@ -207,8 +251,58 @@ function ode_function(problem::TransportProblem, u0::AbstractMatrix, t0)
     # respect to the potential vanish too, and the pattern would be incomplete.
     jacval = Matrix{Float64}(u0)
     jacval[1:(nunknowns - 1), :] .= problem.scales[1:(nunknowns - 1)]
-    f = SciMLBase.ODEFunction(state; jacval=vec(jacval), tjac=t0)
+    vfvm = SciMLBase.ODEFunction(state; jacval=vec(jacval), tjac=t0)
+    # VoronoiFVM evaluates the Jacobian with every right-hand side; the Rosenbrock and BDF
+    # methods need the right-hand side more often than the Jacobian, so the residual is
+    # evaluated separately (see `residual!`).
+    workspace = ResidualWorkspace(nunknowns)
+    rhs!(du, u, p, t) = (residual!(du, u, problem, workspace); du .*= -1; nothing)
+    f = SciMLBase.ODEFunction(rhs!; jac=vfvm.jac, jac_prototype=vfvm.jac_prototype, mass_matrix=vfvm.mass_matrix)
     return state, f
+end
+
+struct ResidualWorkspace
+    u::Matrix{Float64}      # unknowns at the two nodes of an edge
+    f::Vector{Float64}
+end
+
+ResidualWorkspace(n) = ResidualWorkspace(zeros(n, 2), zeros(n))
+
+"""
+    residual!(r, u, problem, workspace)
+
+Residual of the semi-discrete equations without the storage terms, as assembled by
+VoronoiFVM, for the state vector `u` (unknowns × nodes, column-major), on the
+one-dimensional grid of the problem: edge fluxes times 1/h, reactions times the Voronoi
+volumes of the nodes, and boundary terms. Unlike VoronoiFVM, no derivatives are computed.
+"""
+function residual!(r, u, problem::TransportProblem, w::ResidualWorkspace)
+    d, x = problem.data, problem.x
+    n = size(w.u, 1)
+    U = reshape(u, n, :)
+    R = reshape(r, n, :)
+    fill!(R, 0.0)
+    for k in 1:(length(x) - 1)
+        h = x[k + 1] - x[k]
+        @views w.u[:, 1] .= U[:, k]
+        @views w.u[:, 2] .= U[:, k + 1]
+        fill!(w.f, 0.0)
+        npp_flux!(w.f, w.u, nothing, d)
+        @views R[:, k] .+= w.f ./ h
+        @views R[:, k + 1] .-= w.f ./ h
+        # Reaction terms over the two halves of the edge (Voronoi volumes)
+        for j in (k, k + 1)
+            fill!(w.f, 0.0)
+            @views npp_reaction!(w.f, U[:, j], nothing, d)
+            @views R[:, j] .+= w.f .* (h / 2)
+        end
+    end
+    for (j, ireg) in ((1, 1), (length(x), 2))
+        fill!(w.f, 0.0)
+        @views boundary_terms!(w.f, U[:, j], ireg, d)
+        @views R[:, j] .+= w.f
+    end
+    return r
 end
 
 """

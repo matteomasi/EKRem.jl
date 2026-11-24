@@ -9,14 +9,14 @@ Models are organised by spatial dimension (`Model1D`, `Model2D`, `Model3D`).
 """
 module EKRem
 
-using ExtendableGrids: ExtendableGrid, simplexgrid
+using ExtendableGrids: ExtendableGrids, ExtendableGrid, simplexgrid
 using LinearSolve: UMFPACKFactorization
 using OrdinaryDiffEqBDF: FBDF
 using OrdinaryDiffEqRosenbrock: Rodas5P
 using PrecompileTools: @compile_workload, @setup_workload
 using Printf: @sprintf
 using SciMLBase: SciMLBase
-using VoronoiFVM: VoronoiFVM, boundary_dirichlet!, boundary_neumann!, fbernoulli
+using VoronoiFVM: VoronoiFVM, fbernoulli
 
 include("constants.jl")
 include("electrolyte.jl")
@@ -27,9 +27,10 @@ include("physics/fluxes.jl")
 include("physics/potential.jl")
 include("physics/boundaries.jl")
 include("transport.jl")
-include("models/model1d.jl")
 include("phreeqcrm/capi.jl")
 include("chemistry.jl")
+include("coupling.jl")
+include("models/model1d.jl")
 
 using .LibPhreeqcRM: set_phreeqcrm_library, phreeqcrm_library, PhreeqcRMError
 
@@ -38,8 +39,8 @@ export debye_length, conductivity, charge_relaxation_time
 export Species, PorousMedium, grid_refined
 export sg_flux
 export PotentialModel, Poisson, ChargeConservation, FixedField
-export BoundaryCondition, Reservoir
-export Model1D, run!, coordinates, output_times, concentration, electric_potential, voltage, current_density
+export BoundaryCondition, Reservoir, Compartment
+export Model1D, run!, coordinates, output_times, concentration, electric_potential, voltage, current_density, amount
 export debye_ratio
 export set_phreeqcrm_library, phreeqcrm_library, PhreeqcRMError
 export Chemistry, aqueous_species, species_concentrations, set_species_concentrations!, component_concentrations
@@ -75,9 +76,24 @@ export react!, selected_output
         electric_potential(model, 2.0)
         voltage(model, 2.0)
         current_density(model, 2.0)
+        amount(model, "S1", 2.0)
         sprint(show, MIME("text/plain"), model)
         run!(workload_model(2; potential=ChargeConservation(), current=true), [1.0]; progress=false)
         run!(workload_model(2; potential=FixedField()), [1.0]; progress=false)
+        # Electrode compartment (water electrolysis)
+        water = [Species("H+", 1, 1.0e-9), Species("OH-", -1, 1.0e-9)]
+        c = Dict("H+" => 1.0, "OH-" => 1.0)
+        compartment = Model1D(;
+            length=1.0e-3,
+            grid=(h_min=1.0e-4, h_max=2.0e-4),
+            species=water,
+            initial=c,
+            left=Compartment(c; volume=1.0e-6, current_density=1.0),
+            right=Reservoir(c; potential=0.0),
+            potential=ChargeConservation(),
+            area=1.0e-4,
+        )
+        run!(compartment, [1.0]; progress=false)
     end
 end
 

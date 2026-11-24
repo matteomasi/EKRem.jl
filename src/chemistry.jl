@@ -157,7 +157,12 @@ end
 Concentrations of the aqueous species (mol m⁻³), as a (cells × species) matrix in the order
 of [`aqueous_species`](@ref).
 """
-species_concentrations(chemistry::Chemistry) = 1000.0 .* LibPhreeqcRM.RM_GetSpeciesConcentrations(chemistry.id)
+function species_concentrations(chemistry::Chemistry)
+    # PhreeqcRM returns moles per litre of solution, whose volume (computed by PHREEQC)
+    # changes with the composition; the moles per litre of pore water conserve the mass
+    c = LibPhreeqcRM.RM_GetSpeciesConcentrations(chemistry.id)
+    return (1000.0 .* LibPhreeqcRM.RM_GetSolutionVolume(chemistry.id)) .* c
+end
 
 """
     set_species_concentrations!(chemistry, c)
