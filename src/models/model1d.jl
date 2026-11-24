@@ -3,7 +3,7 @@
 """
     Model1D(; length, grid, species, initial, left, right, potential=Poisson(),
             porosity=1.0, tortuosity=1.0, relative_permittivity=WATER_RELATIVE_PERMITTIVITY,
-            temperature=298.15)
+            temperature=298.15, area=nothing, database=nothing, input=nothing, threads=1)
 
 One-dimensional model of electrokinetic transport in a water-saturated porous medium
 between two boundaries at x = 0 (`left`) and x = `length` (`right`), in m.
@@ -15,19 +15,34 @@ between two boundaries at x = 0 (`left`) and x = `length` (`right`), in m.
 - `species`: vector of [`Species`](@ref).
 - `initial`: uniform initial pore-water concentrations (mol m⁻³), as a dictionary that maps
   species names to concentrations.
-- `left`, `right`: boundary conditions, e.g. [`Reservoir`](@ref). The potential must be
-  fixed at one boundary at least; a current density can be applied at the other
-  one with the [`ChargeConservation`](@ref) formulation.
+- `left`, `right`: boundary conditions, [`Reservoir`](@ref) or [`Compartment`](@ref). The
+  potential must be fixed at one boundary at least; a current density can be applied at
+  the other one with the [`ChargeConservation`](@ref) formulation.
 - `potential`: formulation of the potential equation: [`Poisson`](@ref),
   [`ChargeConservation`](@ref) or [`FixedField`](@ref).
 - `porosity`, `tortuosity`, `relative_permittivity`: properties of the medium
   (see [`PorousMedium`](@ref)).
 - `temperature`: temperature (K).
+- `area`: cross-sectional area of the column (m²), required with electrode compartments.
 
 The initial and boundary compositions must be electroneutral. The model is run with
 [`run!`](@ref), and the results are obtained with [`concentration`](@ref),
 [`electric_potential`](@ref), [`voltage`](@ref) and [`current_density`](@ref) at the times
 in [`output_times`](@ref).
+
+# Geochemical reactions
+Reactions are computed by PhreeqcRM in every node (see [`Chemistry`](@ref)) when the PHREEQC
+`database` and `input` are given. Then:
+- `initial` contains the numbers of the PHREEQC definitions in the column, e.g.
+  `(solution=1, kinetics=1)`, as for [`Chemistry`](@ref), with one number for all nodes or
+  one per node. The amounts of reactants are per litre of pore water.
+- The reservoirs and compartments are given by PHREEQC definitions, e.g.
+  `Reservoir(; solution=2, potential=0.0)`.
+- `species` is optional: by default, all aqueous species except H2O are transported, with
+  the diffusion coefficients of the database. A vector of names or of [`Species`](@ref)
+  selects the transported species (and their diffusion coefficients); the other species
+  are immobile.
+- `threads` is the number of threads of PhreeqcRM.
 """
 mutable struct Model1D
     x::Vector{Float64}
@@ -35,10 +50,10 @@ mutable struct Model1D
     medium::PorousMedium
     temperature::Float64
     potential::PotentialModel
-    initial::Vector{Float64}
-    left::Reservoir
-    right::Reservoir
+    left::BoundaryCondition
+    right::BoundaryCondition
     problem::TransportProblem
+    chemistry::Union{Coupling,Nothing}
     state::Matrix{Float64}
     time::Float64
     times::Vector{Float64}
@@ -48,39 +63,63 @@ end
 function Model1D(;
     length::Real,
     grid,
-    species::AbstractVector{Species},
-    initial::AbstractDict,
-    left::Reservoir,
-    right::Reservoir,
+    species=nothing,
+    initial::Union{AbstractDict,NamedTuple},
+    left::BoundaryCondition,
+    right::BoundaryCondition,
     potential::PotentialModel=Poisson(),
     porosity::Real=1.0,
     tortuosity::Real=1.0,
     relative_permittivity::Real=WATER_RELATIVE_PERMITTIVITY,
     temperature::Real=298.15,
+    area::Union{Real,Nothing}=nothing,
+    database::Union{AbstractString,Nothing}=nothing,
+    input::Union{AbstractString,Nothing}=nothing,
+    threads::Integer=1,
 )
     x = _coordinates(length, grid)
-    names = [s.name for s in species]
-    allunique(names) || throw(ArgumentError("Species names must be unique"))
     medium = PorousMedium(; porosity, tortuosity, relative_permittivity)
     _check_electric_conditions(potential, left, right)
 
-    c0 = concentration_vector(species, initial)
-    cl = concentration_vector(species, left.concentrations)
-    cr = concentration_vector(species, right.concentrations)
-    for (label, c) in (("initial", c0), ("left boundary", cl), ("right boundary", cr))
-        imbalance = charge_imbalance(species, c)
+    # Concentrations at the nodes (species × nodes), the boundary nodes being the reservoirs
+    if database === nothing && input === nothing
+        initial isa AbstractDict ||
+            throw(ArgumentError("`initial` must be a dictionary of concentrations (no PHREEQC database and input)"))
+        species isa AbstractVector{Species} || throw(ArgumentError("`species` must be a vector of Species"))
+        any(b -> _phreeqc_boundary(b), (left, right)) &&
+            throw(ArgumentError("Boundaries given by PHREEQC definitions require a PHREEQC `database` and `input`"))
+        coupling = nothing
+        c = repeat(concentration_vector(species, initial), 1, Base.length(x))
+        c[:, 1] = concentration_vector(species, left.concentrations)
+        c[:, end] = concentration_vector(species, right.concentrations)
+    else
+        coupling, species, c = _chemistry(x, species, initial, left, right, database, input, threads)
+        left, right = (_resolved(b, species, c[:, k]) for (b, k) in ((left, 1), (right, Base.length(x))))
+    end
+    names = [s.name for s in species]
+    allunique(names) || throw(ArgumentError("Species names must be unique"))
+    for k in axes(c, 2)
+        imbalance = charge_imbalance(species, c[:, k])
+        label = if k == 1
+            "left boundary"
+        elseif k == Base.length(x)
+            "right boundary"
+        else
+            "initial"
+        end
         imbalance <= 1.0e-8 ||
             throw(ArgumentError("The $label composition is not electroneutral (relative charge imbalance $imbalance)"))
     end
 
     # Characteristic scales: largest concentration of each species (with a floor for species
     # absent from all compositions) and R T / F for the potential
-    cmax = max.(c0, cl, cr)
+    cmax = vec(maximum(c; dims=2))
     floor_c = 1.0e-9 * max(maximum(cmax), 1.0)
     scales = vcat(max.(cmax, floor_c), GAS_CONSTANT * temperature / FARADAY)
 
     electric(b) = fixed_potential(b) ? b.potential : b.current_density
-    bvalues = hcat(vcat(cl, electric(left)), vcat(cr, electric(right)))
+    bvalues = hcat(vcat(c[:, 1], electric(left)), vcat(c[:, end], electric(right)))
+    depth, flushing, production = _compartments(species, left, right, area)
     problem = TransportProblem(
         simplexgrid(x),
         species,
@@ -89,31 +128,99 @@ function Model1D(;
         bvalues,
         [fixed_potential(left), fixed_potential(right)],
         scales;
-        temperature=temperature,
+        temperature,
+        depth,
+        flushing,
+        production,
     )
 
-    # Initial state: uniform concentrations and boundary values at the boundary nodes. The
-    # potential is computed from the potential equation, starting from a linear profile
-    # (with an applied current density, the field is estimated from Ohm's law with the
-    # initial conductivity).
-    nspecies = Base.length(species)
-    state = zeros(nspecies + 1, Base.length(x))
-    state[1:nspecies, :] .= c0
-    state[1:nspecies, 1] .= cl
-    state[1:nspecies, end] .= cr
-    state[end, :] .= _initial_potential(x, left, right, problem.data.Deff, [s.z for s in species], c0, temperature)
-    state = solve_potential(problem, state)
+    # Initial state. The potential is computed from the potential equation, starting from a
+    # linear profile (with an applied current density, the field is estimated from Ohm's law
+    # with the mean initial conductivity).
+    c_mean = vec(sum(c; dims=2)) ./ Base.length(x)
+    φ0 = _initial_potential(x, left, right, problem.data.Deff, [s.z for s in species], c_mean, temperature)
+    state = solve_potential(problem, vcat(c, transpose(φ0)))
 
     return Model1D(
-        x, collect(species), medium, temperature, potential, c0, left, right, problem, state, 0.0, [0.0], [copy(state)]
+        x,
+        collect(species),
+        medium,
+        temperature,
+        potential,
+        left,
+        right,
+        problem,
+        coupling,
+        state,
+        0.0,
+        [0.0],
+        [copy(state)],
     )
 end
 
-function _check_electric_conditions(potential::PotentialModel, left::Reservoir, right::Reservoir)
+# PhreeqcRM cells at the nodes, transported species, and their concentrations at the nodes
+function _chemistry(x, species, initial, left, right, database, input, threads)
+    database !== nothing && input !== nothing ||
+        throw(ArgumentError("Geochemical reactions require both a PHREEQC `database` and an `input`"))
+    initial isa NamedTuple ||
+        throw(ArgumentError("With geochemical reactions, `initial` contains the numbers of PHREEQC definitions"))
+    nnodes = Base.length(x)
+    conditions = node_conditions(initial, nnodes, phreeqc_definitions(left), phreeqc_definitions(right))
+    chemistry = Chemistry(nnodes; database, input, initial=conditions, threads)
+    transported, columns = transported_species(chemistry, species)
+    c = Matrix(transpose(species_concentrations(chemistry)[:, columns]))
+    # Nodes whose concentrations change by the reactions: the interior and the compartments
+    nodes = [k for k in 1:nnodes if !((k == 1 && left isa Reservoir) || (k == nnodes && right isa Reservoir))]
+    coupling = Coupling(chemistry, columns, nodes, [_selected_output(chemistry)])
+    return coupling, transported, c
+end
+
+_phreeqc_boundary(b::Reservoir) = b.solution !== nothing
+_phreeqc_boundary(b::Compartment) = b.initial !== nothing
+
+# Boundary condition with the initial concentrations computed by PhreeqcRM
+function _resolved(b::Reservoir, species, c)
+    return Reservoir(Dict(s.name => ci for (s, ci) in zip(species, c)), b.solution, b.potential, b.current_density)
+end
+
+function _resolved(b::Compartment, species, c)
+    concentrations = Dict(s.name => ci for (s, ci) in zip(species, c))
+    return Compartment(concentrations, b.initial, b.volume, b.flow, b.potential, b.current_density)
+end
+
+# Compartment volume and flushing rate per cross-sectional area, and production by water
+# electrolysis (species × boundary). The current density i applied at one boundary is
+# positive where it flows into the column (anode); the current is the same at the other
+# boundary (cathode).
+function _compartments(species, left, right, area)
+    depth, flushing, production = zeros(2), zeros(2), zeros(Base.length(species), 2)
+    boundaries = (left, right)
+    any(b -> b isa Compartment, boundaries) || return depth, flushing, production
+    area isa Real && area > 0 ||
+        throw(ArgumentError("Electrode compartments require the cross-sectional `area` of the column (m²)"))
+    applied = findfirst(b -> !fixed_potential(b), boundaries)
+    i = boundaries[applied].current_density
+    anode = i >= 0 ? applied : 3 - applied
+    for (k, b) in enumerate(boundaries)
+        b isa Compartment || continue
+        depth[k], flushing[k] = b.volume / area, b.flow / area
+        product = k == anode ? "H+" : "OH-"
+        j = findfirst(s -> s.name == product, species)
+        j === nothing && throw(ArgumentError("Water electrolysis in a compartment requires the species $product"))
+        production[j, k] = abs(i) / FARADAY
+    end
+    return depth, flushing, production
+end
+
+function _check_electric_conditions(potential::PotentialModel, left::BoundaryCondition, right::BoundaryCondition)
     fixed_potential(left) ||
         fixed_potential(right) ||
         throw(ArgumentError("The potential must be fixed at one boundary at least"))
-    fixed_potential(left) && fixed_potential(right) && return nothing
+    if fixed_potential(left) && fixed_potential(right)
+        any(b -> b isa Compartment, (left, right)) &&
+            throw(ArgumentError("Electrode compartments require a current density applied at one boundary"))
+        return nothing
+    end
     potential isa ChargeConservation || throw(
         ArgumentError(
             "An applied current density requires the ChargeConservation formulation, not $(nameof(typeof(potential)))",
@@ -122,7 +229,7 @@ function _check_electric_conditions(potential::PotentialModel, left::Reservoir, 
     return nothing
 end
 
-function _initial_potential(x, left::Reservoir, right::Reservoir, Deff, z, c0, temperature)
+function _initial_potential(x, left::BoundaryCondition, right::BoundaryCondition, Deff, z, c0, temperature)
     L = x[end]
     fixed_potential(left) &&
         fixed_potential(right) &&
@@ -158,14 +265,11 @@ the solution of the Poisson equation is electroneutral outside thin boundary lay
 """
 function debye_ratio(model::Model1D)
     z = [s.z for s in model.species]
-    compositions = (
-        model.initial,
-        concentration_vector(model.species, model.left.concentrations),
-        concentration_vector(model.species, model.right.concentrations),
-    )
+    n = Base.length(model.species)
+    c = model.results[1][1:n, :]
     λ = maximum(
-        debye_length(c, z; εr=model.medium.relative_permittivity, T=model.temperature) for
-        c in compositions if any(>(0), abs.(z) .* c)
+        debye_length(c[:, k], z; εr=model.medium.relative_permittivity, T=model.temperature) for
+        k in axes(c, 2) if any(>(0), abs.(z) .* c[:, k])
     )
     return λ / minimum(diff(model.x))
 end
@@ -185,8 +289,13 @@ function Base.show(io::IO, ::MIME"text/plain", m::Model1D)
         m.temperature,
         " K",
     )
-    electric(b) = fixed_potential(b) ? "φ = $(b.potential) V" : "i = $(b.current_density) A/m²"
+    function electric(b)
+        condition = fixed_potential(b) ? "φ = $(b.potential) V" : "i = $(b.current_density) A/m²"
+        return b isa Compartment ? "compartment of $(b.volume) m³, $condition" : condition
+    end
     println(io, "  boundaries: left ", electric(m.left), ", right ", electric(m.right))
+    m.chemistry === nothing ||
+        println(io, "  reactions: PhreeqcRM, ", Base.length(m.chemistry.chemistry.components), " components")
     return print(
         io, "  potential: ", nameof(typeof(m.potential)), "; λ_D,max / h_min = ", round(debye_ratio(m); sigdigits=3)
     )
@@ -213,8 +322,19 @@ control):
 - `:FBDF`: backward differentiation formulas of variable order (1 to 5). Fewer Jacobian
   evaluations per step; suited to long simulations with slowly varying solutions.
 
+Rodas5P conserves the amounts of the species to round-off; FBDF conserves them only to the
+tolerance of its Newton iteration (relative errors of the order of `reltol`).
+
 Solvers can be mixed for different parts of the simulation by calling `run!` multiple 
 times with different `solver` arguments, e.g., see the example below.
+
+With geochemical reactions, `coupling_step` (s) is required: each interval between output
+times is divided into equal coupling steps not longer than `coupling_step`. Over each step,
+the transport equations are integrated first, and the reactions are then computed over the
+same step in every node (sequential non-iterative approach). The splitting error decreases
+in proportion to the coupling step, and it is largest at sharp reaction fronts, such as an
+acid front in a carbonate medium; the coupling step is therefore chosen by comparing the
+results with those of a shorter step.
 
 # Example
 ```julia
@@ -223,18 +343,53 @@ run!(model, [7 * 86400.0]; solver=:FBDF)        # continue for 7 d with FBDF
 ```
 """
 function run!(
-    model::Model1D, times; solver::Symbol=:Rodas5P, reltol::Real=1.0e-4, abstol::Real=1.0e-6, progress::Bool=true
+    model::Model1D,
+    times;
+    coupling_step::Union{Real,Nothing}=nothing,
+    solver::Symbol=:Rodas5P,
+    reltol::Real=1.0e-4,
+    abstol::Real=1.0e-6,
+    progress::Bool=true,
 )
     t = sort(unique(collect(Float64, times)))
     t[1] > model.time || throw(ArgumentError("Output times must be later than the current time $(model.time) s"))
-    states = solve_transport(model.problem, model.state, vcat(model.time, t); solver, reltol, abstol, progress)
-    for (k, tk) in enumerate(t)
-        push!(model.times, tk)
-        push!(model.results, copy(states[k + 1]))
+    if model.chemistry === nothing
+        coupling_step === nothing || throw(ArgumentError("`coupling_step` requires geochemical reactions"))
+        states = solve_transport(model.problem, model.state, vcat(model.time, t); solver, reltol, abstol, progress)
+        for (k, tk) in enumerate(t)
+            push!(model.times, tk)
+            push!(model.results, copy(states[k + 1]))
+        end
+    else
+        coupling_step === nothing && throw(ArgumentError("Geochemical reactions require a `coupling_step`"))
+        coupling_step > 0 || throw(ArgumentError("The coupling step must be positive"))
+        _run_coupled!(model, t, coupling_step; solver, reltol, abstol, progress)
     end
     model.state = copy(model.results[end])
     model.time = model.times[end]
     return model
+end
+
+function _run_coupled!(model::Model1D, times, coupling_step; solver, reltol, abstol, progress)
+    report = Progress(model.time, times[end])
+    state = copy(model.state)
+    t0 = model.time
+    for tk in times
+        nsteps = ceil(Int, (tk - t0) / coupling_step * (1 - 1.0e-12))
+        steps = range(t0, tk; length=nsteps + 1)
+        for i in 1:nsteps
+            state = solve_transport(model.problem, state, steps[i:(i + 1)]; solver, reltol, abstol)[end]
+            react_nodes!(model.chemistry, state, steps[i + 1] - steps[i])
+            progress && show_progress!(report, steps[i + 1])
+        end
+        # The potential is computed for the concentrations after the reactions
+        push!(model.times, tk)
+        push!(model.results, solve_potential(model.problem, state, tk))
+        push!(model.chemistry.selected, _selected_output(model.chemistry.chemistry))
+        t0 = tk
+    end
+    progress && show_progress!(report, times[end]; final=true)
+    return nothing
 end
 
 "Node coordinates (m) of the model."
@@ -261,11 +416,37 @@ function concentration(model::Model1D, name::AbstractString, t::Real)
 end
 
 """
+    amount(model, name, t) -> Float64
+
+Amount of species `name` (mol per m² of cross-sectional area) dissolved in the pore water of
+the column and in the electrode compartments, at output time `t` (s).
+"""
+function amount(model::Model1D, name::AbstractString, t::Real)
+    c = concentration(model, name, t)
+    x = model.x
+    volume = vcat(x[2] - x[1], x[3:end] .- x[1:(end - 2)], x[end] - x[end - 1]) ./ 2   # Voronoi cells
+    d = model.problem.data
+    compartments = (d.compartment[1] ? d.depth[1] * c[1] : 0.0) + (d.compartment[2] ? d.depth[2] * c[end] : 0.0)
+    return model.medium.porosity * sum(volume .* c) + compartments
+end
+
+"""
     electric_potential(model, t) -> Vector{Float64}
 
 Electric potential (V) at the nodes, at output time `t` (s).
 """
 electric_potential(model::Model1D, t::Real) = model.results[_time_index(model, t)][end, :]
+
+"""
+    selected_output(model, t) -> Dict{String, Vector{Float64}}
+
+Columns of the PHREEQC selected output at the nodes, indexed by their headings (e.g.
+`"pH"`), at output time `t` (s). Only for models with geochemical reactions.
+"""
+function selected_output(model::Model1D, t::Real)
+    model.chemistry === nothing && throw(ArgumentError("The model has no geochemical reactions"))
+    return model.chemistry.selected[_time_index(model, t)]
+end
 
 """
     voltage(model, t) -> Float64
