@@ -4,7 +4,7 @@ EKRem is a Julia package for the simulation and design of electrokinetic remedia
 
 Three models are available, and they are organised by spatial dimension: `Model1D` for columns and laboratory setups, and `Model2D` and `Model3D` for field applications.
 
-**Status:** pre-alpha. `Model1D` solves the Nernst–Planck equations with fixed concentrations at both ends. The electric potential is described by the Poisson equation (`Poisson()`), by charge conservation in an electroneutral solution (`ChargeConservation()`), or by a fixed field (`FixedField()`). The potential is fixed at both ends (voltage control), or at one end with a current density applied at the other (current control, with `ChargeConservation()`). The coupling with PhreeqcRM, electrode compartments, electroosmosis, `Model2D` and `Model3D` are not implemented yet.
+**Status:** pre-alpha. `Model1D` solves the Nernst–Planck equations with fixed concentrations at both ends. The electric potential is described by the Poisson equation (`Poisson()`), by charge conservation in an electroneutral solution (`ChargeConservation()`), or by a fixed field (`FixedField()`). The potential is fixed at both ends (voltage control), or at one end with a current density applied at the other (current control, with `ChargeConservation()`). Geochemical reactions are computed by PhreeqcRM in a set of cells (`Chemistry`). The coupling of reactions and transport, electrode compartments, electroosmosis, `Model2D` and `Model3D` are not implemented yet.
 
 ## Example
 
@@ -76,7 +76,7 @@ pkg> test
 
 ## PhreeqcRM library
 
-The PhreeqcRM shared library is not distributed with the package. Its path is set once, in the Julia REPL with the project activated:
+The PhreeqcRM shared library (version 3.8.6 or later) is not distributed with the package. Its path is set once, in the Julia REPL with the project activated:
 
 ```julia
 using EKRem
