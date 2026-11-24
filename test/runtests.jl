@@ -7,4 +7,5 @@ using Test
     include("test_grids.jl")
     include("test_model1d.jl")
     include("test_phreeqcrm_capi.jl")
+    include("test_chemistry.jl")
 end
