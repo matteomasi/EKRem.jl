@@ -54,7 +54,8 @@ The common development tasks are run with `make` (GNU Make); `make help` lists t
 
 ```console
 make install-dev    # instantiate the environments and install the development tools
-make test           # run the unit tests
+make test           # run the unit tests (directly in the package environment)
+make test-pkg       # run the unit tests with Pkg.test, in an isolated test environment
 make examples       # run all examples
 make lint           # check package quality with Aqua.jl
 make format         # format the code with JuliaFormatter (settings in .JuliaFormatter.toml)
