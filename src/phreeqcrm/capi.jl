@@ -360,6 +360,13 @@ function RM_SetSelectedOutputOn(id::Integer, selected_output::Bool)
     return _check(id, s, :RM_SetSelectedOutputOn)
 end
 
+"Number of SELECTED_OUTPUT blocks defined in the worker instances."
+function RM_GetSelectedOutputCount(id::Integer)
+    n = @ccall $(_fptr(:RM_GetSelectedOutputCount))(id::Cint)::Cint
+    _check(id, n, :RM_GetSelectedOutputCount)
+    return Int(n)
+end
+
 "Select the SELECTED_OUTPUT block (user number `n_user`) returned by the other selected-output functions."
 function RM_SetCurrentSelectedOutputUserNumber(id::Integer, n_user::Integer)
     s = @ccall $(_fptr(:RM_SetCurrentSelectedOutputUserNumber))(id::Cint, n_user::Cint)::Cint
@@ -476,6 +483,19 @@ function RM_SpeciesConcentrations2Module(id::Integer, c::AbstractMatrix{<:Real})
     m = Matrix{Cdouble}(c)
     s = @ccall $(_fptr(:RM_SpeciesConcentrations2Module))(id::Cint, m::Ptr{Cdouble})::Cint
     return _check(id, s, :RM_SpeciesConcentrations2Module)
+end
+
+"""
+    RM_GetSolutionVolume(id) -> Vector{Float64}
+
+Volume of the solution (L) in each cell, as computed by PHREEQC. The vector passed to the C
+function is allocated here.
+"""
+function RM_GetSolutionVolume(id::Integer)
+    v = zeros(Float64, RM_GetGridCellCount(id))
+    s = @ccall $(_fptr(:RM_GetSolutionVolume))(id::Cint, v::Ptr{Cdouble})::Cint
+    _check(id, s, :RM_GetSolutionVolume)
+    return v
 end
 
 """
