@@ -90,7 +90,8 @@ const WATER_SPECIES = [
     else
         @testset "Compartments with geochemical reactions" begin
             database = get(ENV, "EKREM_PHREEQC_DATABASE", joinpath(dirname(dirname(lib)), "database", "phreeqc.dat"))
-            # Calcite in the column; the catholyte is kept at pH 3 by addition of HNO3
+            # Calcite in the column; the catholyte (NaNO3) is kept at pH 3 by addition of HNO3.
+            # Without nitrate in the solution, PHREEQC does not converge on the amount of HNO3.
             input = """
             PHASES
             Fix_H+
@@ -105,7 +106,7 @@ const WATER_SPECIES = [
             SOLUTION 2
                 pH 7 charge
                 Na 1
-                Cl 1
+                N(5) 1
             EQUILIBRIUM_PHASES 2
                 Fix_H+ -3 HNO3 10
             SELECTED_OUTPUT 1
@@ -126,11 +127,15 @@ const WATER_SPECIES = [
                 tortuosity=0.5,
                 area=1.0e-3,
             )
+            @test abs(selected_output(model, 0.0)["pH"][end] - 3) < 1.0e-6   # initial catholyte
             run!(model, [300.0]; coupling_step=60.0, progress=false)
             pH = selected_output(model, 300.0)["pH"]
             @test pH[1] < 4                                     # acidified anolyte
             @test abs(pH[end] - 3) < 1.0e-6                     # catholyte at pH 3
-            @test concentration(model, "NO3-", 300.0)[end] > 0  # nitric acid added
+            # Nitric acid is added to neutralise the OH- produced at the cathode
+            stoichiometry = ("NO3-" => 1, "NO2-" => 1, "N2" => 2, "NH3" => 1, "NH4+" => 1)
+            nitrogen(t) = sum(k * amount(model, s, t) for (s, k) in stoichiometry)
+            @test nitrogen(300.0) > nitrogen(0.0)
             # Cl is conserved (Rodas5P conserves the amounts to round-off)
             cl(t) = amount(model, "Cl-", t) + amount(model, "HCl", t)
             @test cl(300.0) ≈ cl(0.0) rtol = 1.0e-9

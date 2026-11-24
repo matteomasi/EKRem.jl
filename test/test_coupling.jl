@@ -15,22 +15,30 @@ SOLUTION 2
 END
 """
 
-# Column with calcite, acid at the anode (left), NaCl at the cathode
+# Column with calcite, nitric acid at the anode (left), NaCl at the cathode. The system
+# contains the same elements as the one of the compartment tests, so that both have the
+# same transported species and share the compiled code of the time integration. The
+# solutions are in equilibrium with atmospheric O2, which fixes their redox state: without
+# a redox couple, PHREEQC does not converge where trace nitrate enters the column.
 const ACID_CALCITE_SYSTEM = """
 SOLUTION 1
     pH 7 charge
     Na 10
     Cl 10
+    O(0) 1 O2(g) -0.68
 EQUILIBRIUM_PHASES 1
     Calcite 0 0.05
 SOLUTION 2
     pH 2
     Na 10
-    Cl 10 charge
+    Cl 10
+    N(5) 10 charge
+    O(0) 1 O2(g) -0.68
 SOLUTION 3
     pH 7 charge
     Na 10
     Cl 10
+    O(0) 1 O2(g) -0.68
 SELECTED_OUTPUT 1
     -reset false
     -pH true
