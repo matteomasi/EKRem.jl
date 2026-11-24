@@ -9,17 +9,70 @@ Models are organised by spatial dimension (`Model1D`, `Model2D`, `Model3D`).
 """
 module EKRem
 
-using VoronoiFVM: fbernoulli
+using ExtendableGrids: ExtendableGrid, simplexgrid
+using LinearSolve: UMFPACKFactorization
+using OrdinaryDiffEqBDF: FBDF
+using OrdinaryDiffEqRosenbrock: Rodas5P
+using PrecompileTools: @compile_workload, @setup_workload
+using Printf: @sprintf
+using SciMLBase: SciMLBase
+using VoronoiFVM: VoronoiFVM, boundary_dirichlet!, fbernoulli
 
 include("constants.jl")
+include("species.jl")
+include("medium.jl")
+include("grids.jl")
 include("physics/fluxes.jl")
+include("physics/potential.jl")
+include("physics/boundaries.jl")
+include("transport.jl")
+include("models/model1d.jl")
 include("phreeqcrm/capi.jl")
 
 using .LibPhreeqcRM: set_phreeqcrm_library, phreeqcrm_library, PhreeqcRMError
 
 export FARADAY, GAS_CONSTANT, VACUUM_PERMITTIVITY, WATER_RELATIVE_PERMITTIVITY
 export debye_length, charge_relaxation_time
+export Species, PorousMedium, grid_refined
 export sg_flux
+export PotentialModel, Poisson
+export BoundaryCondition, Reservoir
+export Model1D, run!, coordinates, output_times, concentration, electric_potential, debye_ratio
 export set_phreeqcrm_library, phreeqcrm_library, PhreeqcRMError
+
+# Precompilation workload: a small simulation is run when the package is precompiled, so
+# that the compiled code of the model and of the time integration is stored with the
+# package and the first simulation of a session does not have to compile it.
+# The code that evaluates the fluxes is specialised on the number of species (through the
+# automatic differentiation of the Jacobian), so the workload covers 2 to 5 species; other
+# numbers are compiled at their first use in a session (about 1 s each).
+@setup_workload begin
+    function workload_model(n)
+        species = [Species("S$i", isodd(i) ? 1 : -1, 1.0e-9) for i in 1:n]
+        # Equal concentrations of cations and anions (the last species is absent for odd n)
+        c(value) = Dict(s.name => (iseven(n) || i < n ? value : 0.0) for (i, s) in enumerate(species))
+        return Model1D(;
+            length=1.0e-3,
+            grid=(h_min=1.0e-4, h_max=2.0e-4),
+            species=species,
+            initial=c(1.0),
+            left=Reservoir(c(1.0); potential=0.1),
+            right=Reservoir(c(2.0); potential=0.0),
+        )
+    end
+    @compile_workload begin
+        for n in 2:5
+            run!(workload_model(n), [1.0]; progress=false)
+        end
+        model = workload_model(2)
+        redirect_stdout(devnull) do
+            run!(model, [1.0]; progress=true)   # the progress callback changes the compiled code
+        end
+        run!(model, [2.0]; solver=:FBDF, progress=false)
+        concentration(model, "S1", 2.0)
+        electric_potential(model, 2.0)
+        sprint(show, MIME("text/plain"), model)
+    end
+end
 
 end # module EKRem
