@@ -29,7 +29,11 @@ install-dev:  ## Instantiate the package and examples environments and install t
 
 # Testing
 .PHONY: test
-test:  ## Run the unit tests
+test:  ## Run the unit tests directly in the package environment (fast)
+	$(JULIA) --project=. test/runtests.jl
+
+.PHONY: test-pkg
+test-pkg:  ## Run the unit tests with Pkg.test, in an isolated test environment
 	$(JULIA) --project=. -e "using Pkg; Pkg.test()"
 
 .PHONY: examples
