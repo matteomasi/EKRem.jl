@@ -20,7 +20,7 @@ using VoronoiFVM: VoronoiFVM, boundary_dirichlet!, fbernoulli
 
 include("constants.jl")
 include("species.jl")
-include("medium.jl")
+include("porousmedium.jl")
 include("grids.jl")
 include("physics/fluxes.jl")
 include("physics/potential.jl")
