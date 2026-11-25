@@ -71,17 +71,11 @@ makedocs(;
 )
 
 function vitepress(command)
-    # Files of a previous VitePress build may not match the new pages
-    for dir in (".temp", "cache")
-        rm(joinpath(@__DIR__, "build", ".documenter", ".vitepress", dir); recursive=true, force=true)
-    end
-    return cd(() -> success(pipeline(`cmd /c npm run docs:$command`; stdout, stderr)), @__DIR__)
+    return cd(() -> success(pipeline(`cmd /c npm run docs:$command`; stdout, stderr)), uppercasefirst(@__DIR__))
 end
 
 if Sys.iswindows()
-    # The first VitePress build after `makedocs` occasionally fails to find its own temporary
-    # files on Windows; a second attempt succeeds.
-    SERVE ? vitepress("dev") : (vitepress("build") || vitepress("build") || error("VitePress build failed"))
+    SERVE ? vitepress("dev") : (vitepress("build") || error("VitePress build failed"))
 elseif SERVE
     DocumenterVitepress.dev_docs(joinpath(@__DIR__, "build"))
 end
