@@ -50,11 +50,11 @@ function help()
     return nothing
 end
 
-"Install the development tools and instantiate the package and examples environments."
+"Install the development tools and instantiate the package, examples and docs environments."
 function install()
     Pkg.activate(DEV_ENV; shared=true)
     Pkg.add(DEV_TOOLS)
-    for project in (ROOT, joinpath(ROOT, "examples"))
+    for project in (ROOT, joinpath(ROOT, "examples"), joinpath(ROOT, "docs"))
         Pkg.activate(project)
         Pkg.instantiate()
         Pkg.precompile()
