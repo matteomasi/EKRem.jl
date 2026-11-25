@@ -3,8 +3,8 @@
 """
     grid_refined(L; h_min, h_max=h_min, growth=1.1) -> Vector{Float64}
 
-Node coordinates of the interval [0, L], refined toward both ends. The cell size is `h_min`
-at x = 0 and x = L and grows geometrically by the factor `growth` toward the centre, up to
+Node coordinates of the interval ``[0, L]``, refined toward both ends. The cell size is
+`h_min` at ``x = 0`` and ``x = L`` and grows geometrically by the factor `growth` toward the centre, up to
 `h_max`. The grid is symmetric.
 """
 function grid_refined(L::Real; h_min::Real, h_max::Real=h_min, growth::Real=1.1)

@@ -1,12 +1,13 @@
 # One-dimensional model: columns and laboratory cells.
 
-"""
+@doc raw"""
     Model1D(; length, grid, species, initial, left, right, potential=Poisson(),
             porosity=1.0, tortuosity=1.0, relative_permittivity=WATER_RELATIVE_PERMITTIVITY,
             temperature=298.15, area=nothing, database=nothing, input=nothing, threads=1)
 
 One-dimensional model of electrokinetic transport in a water-saturated porous medium
-between two boundaries at x = 0 (`left`) and x = `length` (`right`), in m.
+between two boundaries at ``x = 0`` (`left`) and ``x = L`` (`right`), with ``L`` = `length`
+(m).
 
 # Arguments
 - `grid`: node coordinates (a vector from 0 to `length`), or a named tuple
@@ -302,7 +303,8 @@ function Base.show(io::IO, ::MIME"text/plain", m::Model1D)
 end
 
 """
-    run!(model, times; solver=:Rodas5P, reltol=1e-4, abstol=1e-6, progress=true) -> model
+    run!(model, times; coupling_step=nothing, solver=:Rodas5P, reltol=1e-4, abstol=1e-6,
+         progress=true) -> model
 
 Run the model from its current time to the largest of `times` (s), storing the
 solution at each point of `times` vector. Repeated calls continue from the last state.
@@ -448,22 +450,22 @@ function selected_output(model::Model1D, t::Real)
     return model.chemistry.selected[_time_index(model, t)]
 end
 
-"""
+@doc raw"""
     voltage(model, t) -> Float64
 
-Potential difference φ(0) − φ(L) (V) between the left and the right boundary at output
-time `t` (s).
+Potential difference ``\phi(0) - \phi(L)`` (V) between the left and the right boundary at
+output time `t` (s).
 """
 function voltage(model::Model1D, t::Real)
     φ = electric_potential(model, t)
     return φ[1] - φ[end]
 end
 
-"""
+@doc raw"""
     current_density(model, t) -> Vector{Float64}
 
-Electric current density i = F Σᵢ zᵢ Jᵢ (A m⁻², per unit cross-sectional area of the
-medium) in the +x direction, at output time `t` (s). The values refer to the midpoints
+Electric current density ``i = F \sum_i z_i J_i`` (A m⁻², per unit cross-sectional area of
+the medium) in the ``+x`` direction, at output time `t` (s). The values refer to the midpoints
 between neighbouring nodes, `(x[1:end-1] .+ x[2:end]) ./ 2`, and are computed from the
 discrete fluxes of the transport equations.
 

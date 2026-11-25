@@ -60,24 +60,27 @@ function _electric_condition(type, potential, current_density)
     current_density === nothing ? nothing : Float64(current_density)
 end
 
-"""
+@doc raw"""
     Compartment(concentrations; volume, flow=0.0, current_density)
     Compartment(concentrations; volume, flow=0.0, potential)
     Compartment(; initial, volume, flow=0.0, current_density)
     Compartment(; initial, volume, flow=0.0, potential)
 
-Electrode compartment at the boundary: a well-mixed solution of `volume` (m³) in contact
-with the end of the column, flushed with deionised water at the rate `flow` (m³ s⁻¹; the
-same volume flows out). The concentrations in the compartment change by the fluxes from
-and into the column, by the outflow and by water electrolysis at the electrode:
+Electrode compartment at the boundary: a well-mixed solution of `volume` ``V`` (m³) in
+contact with the end of the column, flushed with deionised water at the rate `flow` ``Q``
+(m³ s⁻¹; the same volume flows out). The concentrations in the compartment change by the
+fluxes from and into the column, by the outflow and by water electrolysis at the electrode:
 
-    V dcᵢ/dt = ∓ A Jᵢ − Q cᵢ + Rᵢ,
+```math
+V \frac{\mathrm{d} c_i}{\mathrm{d} t} = \mp A J_i - Q c_i + R_i,
+```
 
-with A the cross-sectional area of the column (the `area` of the model) and Jᵢ the flux at
-the boundary in the +x direction (− at the left, + at the right boundary). Electrolysis
-produces H+ at the anode (2 H2O → O2 + 4 H+ + 4 e−) and OH− at the cathode
-(2 H2O + 2 e− → H2 + 2 OH−), at the rate Rᵢ = I/F, where I is the current; the gases are
-assumed to escape.
+with ``A`` the cross-sectional area of the column (the `area` of the model) and ``J_i`` the
+flux at the boundary in the ``+x`` direction (``-`` at the left, ``+`` at the right
+boundary). Electrolysis produces H⁺ at the anode
+(``\mathrm{2\,H_2O \to O_2 + 4\,H^+ + 4\,e^-}``) and OH⁻ at the cathode
+(``\mathrm{2\,H_2O + 2\,e^- \to H_2 + 2\,OH^-}``), at the rate ``R_i = I / F``, where ``I``
+is the current; the gases are assumed to escape.
 
 The initial composition is given by `concentrations` (mol m⁻³) or, in a model with
 geochemical reactions, by the numbers of PHREEQC definitions, e.g.

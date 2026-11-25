@@ -4,13 +4,13 @@ const AVOGADRO = 6.02214076e23              # mol⁻¹
 const ELEMENTARY_CHARGE = 1.602176634e-19   # C
 const BOLTZMANN = 1.380649e-23              # J K⁻¹
 
-"Faraday constant F = N_A e (C mol⁻¹)."
+"Faraday constant ``F = N_A e`` (C mol⁻¹)."
 const FARADAY = AVOGADRO * ELEMENTARY_CHARGE
 
-"Molar gas constant R = N_A k (J mol⁻¹ K⁻¹)."
+"Molar gas constant ``R = N_A k_B`` (J mol⁻¹ K⁻¹)."
 const GAS_CONSTANT = AVOGADRO * BOLTZMANN
 
-"Vacuum permittivity ε₀ (F m⁻¹), CODATA 2018 recommended value."
+@doc raw"Vacuum permittivity ``\varepsilon_0`` (F m⁻¹), CODATA 2018 recommended value."
 const VACUUM_PERMITTIVITY = 8.8541878128e-12
 
 """

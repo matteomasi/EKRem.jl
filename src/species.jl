@@ -1,10 +1,10 @@
 # Aqueous species transported by the Nernst–Planck equations.
 
-"""
+@doc raw"""
     Species(name, z, D)
 
 Aqueous species with charge number `z` and diffusion coefficient `D` in free water
-(m² s⁻¹). The effective diffusion coefficient in the porous medium is n τ D (see
+(m² s⁻¹). The effective diffusion coefficient in the porous medium is ``n \tau D`` (see
 [`PorousMedium`](@ref)).
 
 # Example
@@ -42,11 +42,11 @@ function concentration_vector(species::AbstractVector{Species}, concentrations::
     return c
 end
 
-"""
+@doc raw"""
     charge_imbalance(species, c) -> Float64
 
-Relative charge imbalance |Σ zᵢ cᵢ| / Σ |zᵢ| cᵢ of a solution (zero for an electroneutral
-solution and for a solution without ions).
+Relative charge imbalance ``\left|\sum_i z_i c_i\right| / \sum_i |z_i| c_i`` of a solution
+(zero for an electroneutral solution and for a solution without ions).
 """
 function charge_imbalance(species::AbstractVector{Species}, c::AbstractVector)
     total = sum(abs(s.z) * ci for (s, ci) in zip(species, c))

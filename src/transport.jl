@@ -135,19 +135,19 @@ struct TransportProblem
     x::Vector{Float64}
 end
 
-"""
+@doc raw"""
     TransportProblem(grid, species, medium, potential, bvalues, fixed_potential, scales;
                      temperature, depth, flushing, production)
 
 Assemble the Nernst–Planck system with the equation `potential` for the electric
-potential. `bvalues` is a (N+1) × (number of boundary regions) matrix of boundary values:
-Dirichlet values of the concentrations, and either the potential (V) or the current density
-applied at the boundary (A m⁻²), as indicated by the vector `fixed_potential`. `scales`
-contains the characteristic scale of each unknown.
+potential. `bvalues` is a ``(N+1) \times`` (number of boundary regions) matrix of boundary
+values: Dirichlet values of the concentrations, and either the potential (V) or the current
+density applied at the boundary (A m⁻²), as indicated by the vector `fixed_potential`.
+`scales` contains the characteristic scale of each unknown.
 
-Boundary regions with a positive `depth` (V/A, m) are electrode compartments, with the
-flushing rate `flushing` (Q/A, m s⁻¹) and the production `production` (R/A, mol m⁻² s⁻¹,
-species × region); their concentrations are not fixed.
+Boundary regions with a positive `depth` (``V/A``, m) are electrode compartments, with the
+flushing rate `flushing` (``Q/A``, m s⁻¹) and the production `production` (``R/A``,
+mol m⁻² s⁻¹, species × region); their concentrations are not fixed.
 """
 function TransportProblem(
     grid::ExtendableGrid,
@@ -268,12 +268,12 @@ end
 
 ResidualWorkspace(n) = ResidualWorkspace(zeros(n, 2), zeros(n))
 
-"""
+@doc raw"""
     residual!(r, u, problem, workspace)
 
 Residual of the semi-discrete equations without the storage terms, as assembled by
 VoronoiFVM, for the state vector `u` (unknowns × nodes, column-major), on the
-one-dimensional grid of the problem: edge fluxes times 1/h, reactions times the Voronoi
+one-dimensional grid of the problem: edge fluxes times ``1/h``, reactions times the Voronoi
 volumes of the nodes, and boundary terms. Unlike VoronoiFVM, no derivatives are computed.
 """
 function residual!(r, u, problem::TransportProblem, w::ResidualWorkspace)
@@ -346,7 +346,7 @@ function solve_potential!(u, problem::TransportProblem, f, state, t; maxiters=50
     return error("The potential equation could not be solved at t = $t s (no convergence in $maxiters iterations)")
 end
 
-"""
+@doc raw"""
     solve_transport(problem, u0, times; solver=:Rodas5P, reltol=1e-4, abstol=1e-6, progress=false)
         -> Vector{Matrix{Float64}}
 
@@ -362,7 +362,7 @@ the time steps end exactly at `times`. The error tolerances are `reltol` (relati
 The potential is excluded from the error control. It is an algebraic variable, determined
 at each instant by the concentrations, so its accuracy follows from theirs. With the
 Poisson formulation, where the Debye length is not resolved, the potential responds to
-charge on the time scale ε/σ (of the order of 1e-9 s), and including it in the error
+charge on the time scale ``\varepsilon / \sigma`` (of the order of ``10^{-9}`` s), and including it in the error
 estimate would force time steps of that size after any perturbation. With the other
 formulations, the time integration solves the potential equation only approximately, and
 the current density is sensitive to the remaining error; the potential of the initial and
