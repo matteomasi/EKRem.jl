@@ -14,10 +14,10 @@ Migration of a trace cation through a NaCl solution under an applied voltage of 
 using EKRem
 
 species = [Species("Na+", 1, 1.33e-9), Species("Cl-", -1, 2.03e-9), Species("T+", 1, 1.0e-9)]
-background = Dict("Na+" => 100.0, "Cl-" => 100.0)                 # mol/m³
+background = Dict("Na+" => 100.0, "Cl-" => 100.0) # mol/m³
 
 model = Model1D(;
-    length=0.1,                                                     # m
+    length=0.1, # m
     grid=(h_min=1.0e-5, h_max=1.0e-4, growth=1.1),
     species,
     initial=background,
@@ -26,12 +26,12 @@ model = Model1D(;
     porosity=0.4,
     tortuosity=0.5,
 )
-run!(model, [1.0e4, 1.0e5])                                         # s
+run!(model, [1.0e4, 1.0e5]) # s
 
 x = coordinates(model)
 c = concentration(model, "T+", 1.0e5)
 φ = electric_potential(model, 1.0e5)
-i = current_density(model, 1.0e5)                                  # A/m², between the nodes
+i = current_density(model, 1.0e5) # A/m², between the nodes
 ```
 
 For current control, `potential=1.0` of the left reservoir is replaced by `current_density=5.0` (A/m²), and `potential=ChargeConservation()` is passed to `Model1D`.
