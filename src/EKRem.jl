@@ -41,6 +41,7 @@ export sg_flux
 export PotentialModel, Poisson, ChargeConservation, FixedField
 export BoundaryCondition, Reservoir, Compartment
 export Model1D, run!, coordinates, output_times, concentration, electric_potential, voltage, current_density, amount
+export electroosmotic_flow
 export debye_ratio
 export set_phreeqcrm_library, phreeqcrm_library, PhreeqcRMError
 export Chemistry, aqueous_species, species_concentrations, set_species_concentrations!, component_concentrations

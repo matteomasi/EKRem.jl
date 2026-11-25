@@ -8,12 +8,16 @@
 # - electric potential φ (V), stored as unknowns 1...N and N+1.
 #
 # Equations, per unit bulk volume:
-#     n ∂cᵢ/∂t + ∇·Jᵢ = 0,    Jᵢ = −Dᵢ* (∇cᵢ + zᵢ cᵢ ∇ψ),    Dᵢ* = n τ Dᵢ,  ψ = F φ / (R T)
+#     n ∂cᵢ/∂t + ∇·Jᵢ = 0,    Jᵢ = −Dᵢ* (∇cᵢ + zᵢ cᵢ ∇ψ) + q cᵢ,    Dᵢ* = n τ Dᵢ,  ψ = F φ / (R T)
+# with q the electroosmotic water flux (Darcy flux). In one dimension, the water flux is
+# uniform, and it is the mean of −k_eo ∂φ/∂x over the column (Masi et al., 2017, Eq. 8):
+#     q = k_eo (φ(0) − φ(L)) / L
 # At a boundary with an electrode compartment (well-mixed solution of volume V per
 # cross-sectional area A), the boundary node represents the compartment:
-#     (V/A) ∂cᵢ/∂t + Jᵢ·ν + (Q/A) cᵢ = Rᵢ / A
-# with ν the outward normal of the compartment toward the column, Q the flushing rate and Rᵢ
-# the production by electrolysis.
+#     (V/A) ∂cᵢ/∂t + Jᵢ·ν + (Q/A + q_out) cᵢ = Rᵢ / A
+# with ν the outward normal of the compartment toward the column, Q the flushing rate, q_out
+# the electroosmotic water flux into the compartment (which overflows; the compartment
+# upstream is refilled with deionised water) and Rᵢ the production by electrolysis.
 # One of the following equations is solved for the potential:
 #     −∇·((ε_eff / F) ∇φ) = n Σᵢ zᵢ cᵢ          Poisson equation divided by F
 #     ∇·(Σᵢ zᵢ Jᵢ) = 0                         charge conservation divided by F
@@ -55,14 +59,40 @@ struct NPPData
     depth::Vector{Float64}          # compartment volume per cross-sectional area V/A (m)
     flushing::Vector{Float64}       # flushing rate per cross-sectional area Q/A (m s⁻¹)
     production::Matrix{Float64}     # production by electrolysis R/A (mol m⁻² s⁻¹), species × region
+    keo_L::Float64                  # electroosmotic permeability / column length (m V⁻¹ s⁻¹)
+    darcy::Base.RefValue{Float64}   # electroosmotic water flux q (m s⁻¹), see `update_darcy!`
 end
+
+# Water flux q from the boundary potentials of the state `u` (unknowns × nodes)
+darcy_flux(d::NPPData, u::AbstractMatrix) = d.keo_L * (u[end, 1] - u[end, end])
+
+"""
+    update_darcy!(data, u)
+
+Set the electroosmotic water flux of the callback data to its value for the state `u`
+(unknowns × nodes, or the corresponding vector). The flux depends on the potentials of the
+two boundary nodes; it is held fixed over each time step and updated after it (see
+[`solve_transport`](@ref)).
+"""
+function update_darcy!(d::NPPData, u::AbstractVector)
+    d.darcy[] = darcy_flux(d, reshape(u, d.nspecies + 1, :))
+    return d
+end
+
+update_darcy!(d::NPPData, u::AbstractMatrix) = update_darcy!(d, vec(u))
+
+# Product of the water flux and the edge vector from node k to node l (VoronoiFVM edge, or
+# the edge length on the one-dimensional grid of `residual!`)
+edge_darcy(edge::VoronoiFVM.Edge, d::NPPData) = VoronoiFVM.project(edge, (d.darcy[],))
+edge_darcy(h::Real, d::NPPData) = d.darcy[] * h
 
 function npp_flux!(f, u, edge, d::NPPData)
     iφ = d.nspecies + 1
     Δψ = d.f_RT * (u[iφ, 2] - u[iφ, 1])
+    qh = edge_darcy(edge, d)
     charge_flux = zero(Δψ)
     for i in 1:(d.nspecies)
-        f[i] = sg_flux(d.Deff[i], d.z[i], u[i, 1], u[i, 2], Δψ)
+        f[i] = sg_flux(d.Deff[i], d.z[i], u[i, 1], u[i, 2], Δψ, qh)
         charge_flux += d.z[i] * f[i]
     end
     if d.formulation == POISSON
@@ -104,9 +134,11 @@ npp_bcondition!(f, u, bnode, d::NPPData) = boundary_terms!(f, u, bnode.region, d
 # Terms of the boundary region `ireg`. Fixed values (Dirichlet conditions) are imposed by a
 # penalty, as in VoronoiFVM.
 function boundary_terms!(f, u, ireg, d::NPPData)
+    # Water flux into the compartment (region 1 at x = 0, region 2 at x = L)
+    q_out = max(ireg == 1 ? -d.darcy[] : d.darcy[], 0.0)
     for i in 1:(d.nspecies)
         if d.compartment[ireg]
-            f[i] += d.flushing[ireg] * u[i] - d.production[i, ireg]
+            f[i] += (d.flushing[ireg] + q_out) * u[i] - d.production[i, ireg]
         else
             f[i] += PENALTY * (u[i] - d.bvalues[i, ireg])
         end
@@ -163,6 +195,7 @@ function TransportProblem(
     production::AbstractMatrix=zeros(length(species), size(bvalues, 2)),
 )
     nspecies = length(species)
+    x = vec(grid[ExtendableGrids.Coordinates])
     data = NPPData(
         nspecies,
         formulation_code(potential),
@@ -177,6 +210,8 @@ function TransportProblem(
         Vector{Float64}(depth),
         Vector{Float64}(flushing),
         Matrix{Float64}(production),
+        medium.electroosmotic_permeability / (x[end] - x[1]),
+        Ref(0.0),
     )
     system = VoronoiFVM.System(
         grid;
@@ -189,7 +224,6 @@ function TransportProblem(
         data=data,
         unknown_storage=:dense,
     )
-    x = vec(grid[ExtendableGrids.Coordinates])
     return TransportProblem(system, data, Vector{Float64}(scales), x)
 end
 
@@ -217,9 +251,13 @@ function show_progress!(p::Progress, t; final=false)
     return nothing
 end
 
-function progress_callback(p::Progress)
+# Callback after each accepted time step: progress report and update of the water flux. The
+# water flux is held fixed over each step; under current control, it changes with the
+# potential of the boundary.
+function step_callback(p::Progress, data::NPPData; progress::Bool, darcy::Bool)
     function affect!(integrator)
-        show_progress!(p, integrator.t)
+        progress && show_progress!(p, integrator.t)
+        darcy && update_darcy!(data, integrator.u)
         SciMLBase.u_modified!(integrator, false)
         return nothing
     end
@@ -287,7 +325,7 @@ function residual!(r, u, problem::TransportProblem, w::ResidualWorkspace)
         @views w.u[:, 1] .= U[:, k]
         @views w.u[:, 2] .= U[:, k + 1]
         fill!(w.f, 0.0)
-        npp_flux!(w.f, w.u, nothing, d)
+        npp_flux!(w.f, w.u, h, d)
         @views R[:, k] .+= w.f ./ h
         @views R[:, k + 1] .-= w.f ./ h
         # Reaction terms over the two halves of the edge (Voronoi volumes)
@@ -327,6 +365,7 @@ Poisson formulation, where the potential is left as computed by the time integra
 function solve_potential!(u, problem::TransportProblem, f, state, t; maxiters=50)
     # With the Poisson formulation, the potential is set by charge imbalances far below the
     # tolerances, which this solution would amplify.
+    update_darcy!(problem.data, u)
     problem.data.formulation == POISSON && return u
     nunknowns = problem.data.nspecies + 1
     scale = problem.scales[end]
@@ -372,6 +411,11 @@ The method does not guarantee non-negative concentrations. Undershoots smaller t
 absolute tolerance are accepted; time steps that produce larger negative concentrations
 are rejected and repeated with a smaller step.
 
+The electroosmotic water flux is held fixed over each time step and computed from the
+potentials of the boundaries at its start (see [`update_darcy!`](@ref)). It is exact under
+voltage control; under current control, the error is of first order in the time step,
+which is small where the voltage changes slowly compared with the time step.
+
 With `progress=true`, the progress and elapsed time are printed at intervals of
 [`PROGRESS_INTERVAL`](@ref) seconds.
 """
@@ -387,8 +431,12 @@ function solve_transport(
     algorithm = time_integrator(solver)
     t = collect(Float64, times)
     nunknowns, nnodes = size(u0)
+    update_darcy!(problem.data, u0)
     state, f = ode_function(problem, u0, t[1])
     u_start = solve_potential!(vec(Matrix{Float64}(u0)), problem, f, state, t[1])
+    update_darcy!(problem.data, u_start)
+    # The water flux changes only if the potential of a boundary is not fixed
+    darcy = problem.data.keo_L != 0 && !all(problem.data.fixed_potential)
     prob = SciMLBase.ODEProblem(f, u_start, (t[1], t[end]), state)
     atol = repeat(problem.scales .* abstol, nnodes)
     atol[nunknowns:nunknowns:end] .= Inf   # potential excluded from the error control
@@ -404,7 +452,7 @@ function solve_transport(
         isoutofdomain=outofdomain,
         saveat=t,
         tstops=t,
-        callback=progress ? progress_callback(report) : nothing,
+        callback=progress || darcy ? step_callback(report, problem.data; progress, darcy) : nothing,
         # The initial potential is computed above; the default check would compare
         # the residuals of the Dirichlet rows (penalty method) with the tolerances.
         initializealg=SciMLBase.NoInit(),

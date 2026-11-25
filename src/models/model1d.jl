@@ -3,7 +3,8 @@
 @doc raw"""
     Model1D(; length, grid, species, initial, left, right, potential=Poisson(),
             porosity=1.0, tortuosity=1.0, relative_permittivity=WATER_RELATIVE_PERMITTIVITY,
-            temperature=298.15, area=nothing, database=nothing, input=nothing, threads=1)
+            electroosmotic_permeability=0.0, temperature=298.15, area=nothing,
+            database=nothing, input=nothing, threads=1)
 
 One-dimensional model of electrokinetic transport in a water-saturated porous medium
 between two boundaries at ``x = 0`` (`left`) and ``x = L`` (`right`), with ``L`` = `length`
@@ -21,15 +22,28 @@ between two boundaries at ``x = 0`` (`left`) and ``x = L`` (`right`), with ``L``
   the other one with the [`ChargeConservation`](@ref) formulation.
 - `potential`: formulation of the potential equation: [`Poisson`](@ref),
   [`ChargeConservation`](@ref) or [`FixedField`](@ref).
-- `porosity`, `tortuosity`, `relative_permittivity`: properties of the medium
-  (see [`PorousMedium`](@ref)).
+- `porosity`, `tortuosity`, `relative_permittivity`, `electroosmotic_permeability`:
+  properties of the medium (see [`PorousMedium`](@ref)).
 - `temperature`: temperature (K).
 - `area`: cross-sectional area of the column (m²), required with electrode compartments.
 
+# Electroosmosis
+The electroosmotic water flux is uniform along the column, as required by the
+conservation of the water volume. It is the mean of ``-k_{eo} \partial\phi/\partial x``
+over the column (Masi et al., 2017, Eq. 8):
+
+```math
+q = \frac{k_{eo}}{L} \left[ \phi(0) - \phi(L) \right],
+```
+
+which corresponds to equal hydraulic heads at both ends. Water flows in from one boundary
+and out at the other; a compartment downstream overflows, and a compartment upstream is
+refilled with deionised water, so that their volumes remain constant.
+
 The initial and boundary compositions must be electroneutral. The model is run with
 [`run!`](@ref), and the results are obtained with [`concentration`](@ref),
-[`electric_potential`](@ref), [`voltage`](@ref) and [`current_density`](@ref) at the times
-in [`output_times`](@ref).
+[`electric_potential`](@ref), [`voltage`](@ref), [`current_density`](@ref) and
+[`electroosmotic_flow`](@ref) at the times in [`output_times`](@ref).
 
 # Geochemical reactions
 Reactions are computed by PhreeqcRM in every node (see [`Chemistry`](@ref)) when the PHREEQC
@@ -72,6 +86,7 @@ function Model1D(;
     porosity::Real=1.0,
     tortuosity::Real=1.0,
     relative_permittivity::Real=WATER_RELATIVE_PERMITTIVITY,
+    electroosmotic_permeability::Real=0.0,
     temperature::Real=298.15,
     area::Union{Real,Nothing}=nothing,
     database::Union{AbstractString,Nothing}=nothing,
@@ -79,7 +94,7 @@ function Model1D(;
     threads::Integer=1,
 )
     x = _coordinates(length, grid)
-    medium = PorousMedium(; porosity, tortuosity, relative_permittivity)
+    medium = PorousMedium(; porosity, tortuosity, relative_permittivity, electroosmotic_permeability)
     _check_electric_conditions(potential, left, right)
 
     # Concentrations at the nodes (species × nodes), the boundary nodes being the reservoirs
@@ -295,6 +310,8 @@ function Base.show(io::IO, ::MIME"text/plain", m::Model1D)
         return b isa Compartment ? "compartment of $(b.volume) m³, $condition" : condition
     end
     println(io, "  boundaries: left ", electric(m.left), ", right ", electric(m.right))
+    k_eo = m.medium.electroosmotic_permeability
+    k_eo == 0 || println(io, "  electroosmosis: k_eo = ", k_eo, " m²/(V s)")
     m.chemistry === nothing ||
         println(io, "  reactions: PhreeqcRM, ", Base.length(m.chemistry.chemistry.components), " components")
     return print(
@@ -477,13 +494,23 @@ function current_density(model::Model1D, t::Real)
     u = model.results[_time_index(model, t)]
     d = model.problem.data
     iφ = d.nspecies + 1
+    q = darcy_flux(d, u)
     i = zeros(Base.length(model.x) - 1)
     for k in eachindex(i)
         h = model.x[k + 1] - model.x[k]
         Δψ = d.f_RT * (u[iφ, k + 1] - u[iφ, k])
         for s in 1:(d.nspecies)
-            i[k] += d.z[s] * sg_flux(d.Deff[s], d.z[s], u[s, k], u[s, k + 1], Δψ) / h
+            i[k] += d.z[s] * sg_flux(d.Deff[s], d.z[s], u[s, k], u[s, k + 1], Δψ, q * h) / h
         end
     end
     return FARADAY .* i
 end
+
+@doc raw"""
+    electroosmotic_flow(model, t) -> Float64
+
+Electroosmotic water flux ``q`` (m s⁻¹, volume of water per unit cross-sectional area of the
+medium and time) in the ``+x`` direction at output time `t` (s); see the section
+Electroosmosis of [`Model1D`](@ref). The mean pore-water velocity is ``q / n``.
+"""
+electroosmotic_flow(model::Model1D, t::Real) = darcy_flux(model.problem.data, model.results[_time_index(model, t)])
