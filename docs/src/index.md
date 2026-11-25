@@ -87,7 +87,7 @@ c = concentration(model, "T+", 1.0e5)
 | Geochemical reactions (PhreeqcRM), sequential non-iterative coupling | implemented |
 | Electrode compartments under current control | implemented |
 | Electrode compartments under voltage control | not implemented |
-| Electroosmosis | not implemented |
+| Electroosmosis (uniform electroosmotic permeability) | implemented |
 | `Model2D`, `Model3D` | not implemented |
 
 The package is at a pre-alpha stage; its interface may change.

@@ -35,6 +35,7 @@ the tolerance of its Newton iteration, with relative errors of the order of `rel
 | [`electric_potential`](@ref) | potential at the nodes (V) |
 | [`voltage`](@ref) | potential difference between the boundaries (V) |
 | [`current_density`](@ref) | current density between neighbouring nodes (A m⁻²) |
+| [`electroosmotic_flow`](@ref) | electroosmotic water flux (m s⁻¹) |
 | [`amount`](@ref) | amount of a species in the column and the compartments (mol m⁻²) |
 | [`selected_output`](@ref) | PHREEQC selected output at the nodes |
 

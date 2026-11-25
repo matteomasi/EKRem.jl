@@ -1,8 +1,8 @@
 # Theory
 
 This page summarises the equations solved by EKRem and their numerical solution. The
-porous medium is water-saturated, isothermal and rigid; advection, including
-electroosmosis, is not included.
+porous medium is water-saturated, isothermal and rigid. The only water flow is
+electroosmotic; hydraulic gradients are not considered.
 
 ## [Transport](@id transport)
 
@@ -17,15 +17,16 @@ n \frac{\partial c_i}{\partial t} + \nabla \cdot \mathbf{J}_i = 0, \qquad i = 1,
 with the Nernst–Planck flux (per unit bulk area)
 
 ```math
-\mathbf{J}_i = -D_i^* \left( \nabla c_i + z_i c_i \nabla \psi \right),
+\mathbf{J}_i = -D_i^* \left( \nabla c_i + z_i c_i \nabla \psi \right) + \mathbf{q} c_i,
 \qquad \psi = \frac{F \phi}{R T},
 \qquad D_i^* = n \tau D_i,
 ```
 
 where ``n`` is the porosity, ``\tau`` the tortuosity factor (``0 < \tau \le 1``), ``D_i``
 the diffusion coefficient in free water, ``z_i`` the charge number, ``F`` the Faraday
-constant, ``R`` the gas constant and ``T`` the temperature. The first term of the flux
-describes diffusion and the second electromigration. Geochemical reactions are not part of
+constant, ``R`` the gas constant and ``T`` the temperature. The terms of the flux describe
+diffusion, electromigration and advection by the electroosmotic water flux ``\mathbf{q}``
+(see [Electroosmosis](@ref electroosmosis)). Geochemical reactions are not part of
 these equations; they are computed separately (see
 [Coupling with geochemical reactions](@ref coupling)).
 
@@ -97,6 +98,34 @@ applied current density is positive at the anode, where the current enters the d
 negative at the cathode. In one dimension, the current density is then uniform along the
 column, and the potential of the boundary is part of the solution.
 
+## [Electroosmosis](@id electroosmosis)
+
+The electroosmotic water flux (Darcy flux, m s⁻¹) is
+
+```math
+\mathbf{q} = -k_{eo} \nabla \phi,
+```
+
+where ``k_{eo}`` (m² V⁻¹ s⁻¹) is the electroosmotic permeability of the medium
+([`PorousMedium`](@ref)). By the Helmholtz–Smoluchowski equation with the porosity and
+tortuosity terms introduced by Casagrande, ``k_{eo} = -\varepsilon \zeta n \tau / \mu``,
+where ``\zeta`` is the zeta potential of the solid and ``\mu`` the viscosity of water (Masi
+et al., 2017, Eq. 6). For the negative zeta potential of most soils, ``k_{eo} > 0`` and water
+flows from the anode to the cathode.
+
+In one dimension, the conservation of the water volume requires a uniform flux. Where the
+field varies along the column, a pressure gradient develops; with equal hydraulic heads at
+both ends, the flux is the mean of ``-k_{eo} \partial\phi/\partial x`` over the column
+(Masi et al., 2017, Eq. 8):
+
+```math
+q = \frac{k_{eo}}{L} \left[ \phi(0) - \phi(L) \right].
+```
+
+The flux is computed from the boundary potentials at the start of each time step and held
+fixed over the step; under voltage control it is constant. In an electroneutral solution,
+the water flux carries no net charge and does not contribute to the current.
+
 ## [Electrode compartments](@id electrode-compartments)
 
 An electrode compartment ([`Compartment`](@ref)) is a well-mixed solution of volume ``V`` in
@@ -105,11 +134,13 @@ deionised water at the volumetric rate ``Q``, and its concentrations change by t
 exchanged with the column, by the outflow and by water electrolysis:
 
 ```math
-V \frac{\mathrm{d} c_i}{\mathrm{d} t} = \mp A J_i - Q c_i + R_i,
+V \frac{\mathrm{d} c_i}{\mathrm{d} t} = \mp A J_i - (Q + A q_\mathrm{in}) c_i + R_i,
 ```
 
 where ``J_i`` is the flux at the boundary in the ``+x`` direction (upper sign at the left
-boundary, lower sign at the right boundary). Electrolysis produces H⁺ at the anode and OH⁻
+boundary, lower sign at the right boundary) and ``q_\mathrm{in} \ge 0`` the electroosmotic
+water flux into the compartment, which overflows. The compartment from which water flows
+into the column is refilled with deionised water. Electrolysis produces H⁺ at the anode and OH⁻
 at the cathode,
 
 ```math
@@ -136,13 +167,15 @@ Nernst–Planck flux from node ``k`` to node ``l`` at distance ``h_{kl}`` is app
 the Scharfetter–Gummel expression ([`sg_flux`](@ref))
 
 ```math
-J_{kl} = \frac{D^*}{h_{kl}} \left[ B(z \Delta\psi_{kl})\, c_k - B(-z \Delta\psi_{kl})\, c_l \right],
+J_{kl} = \frac{D^*}{h_{kl}} \left[ B(x_{kl})\, c_k - B(-x_{kl})\, c_l \right],
+\qquad x_{kl} = z \Delta\psi_{kl} - \frac{q_{kl} h_{kl}}{D^*},
 \qquad B(x) = \frac{x}{e^x - 1},
-\qquad \Delta\psi_{kl} = \psi_l - \psi_k ,
 ```
 
-which is exact for a constant flux and a linear potential along the edge. It reduces to
-central differences where diffusion dominates and to upwinding where migration dominates.
+with ``\Delta\psi_{kl} = \psi_l - \psi_k`` and ``q_{kl}`` the water flux from ``k`` to ``l``.
+The expression is exact for a constant flux, a linear potential and a constant water flux
+along the edge. It reduces to central differences where diffusion dominates and to
+upwinding where migration or advection dominates.
 The examples show second-order convergence of the steady-state solutions with respect to the
 grid spacing.
 
@@ -181,3 +214,9 @@ Each PhreeqcRM cell contains 1 L of pore water; the amounts of minerals and othe
 in the PHREEQC input are therefore per litre of pore water. Concentrations are exchanged as
 concentrations of aqueous species, in mol per m³ of pore water (equal to mmol L⁻¹), so that
 the amounts of the components are conserved by the transfer.
+
+## References
+
+Masi, M., Ceccarini, A., Iannelli, R., 2017. Multispecies reactive transport modelling of
+electrokinetic remediation of harbour sediments. J. Hazard. Mater. 326, 187–196.
+https://doi.org/10.1016/j.jhazmat.2016.12.032

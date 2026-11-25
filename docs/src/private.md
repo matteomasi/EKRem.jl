@@ -13,6 +13,7 @@ EKRem.solve_potential
 EKRem.solve_potential!
 EKRem.ode_function
 EKRem.residual!
+EKRem.update_darcy!
 EKRem.SOLVERS
 EKRem.PROGRESS_INTERVAL
 ```
