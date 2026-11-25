@@ -62,6 +62,8 @@ make install-dev    # instantiate the environments and install the development t
 make test           # run the unit tests (directly in the package environment)
 make test-pkg       # run the unit tests with Pkg.test, in an isolated test environment
 make examples       # run all examples
+make docs           # build the documentation (site in docs/build/1)
+make docs-serve     # build the documentation and serve it locally with live reload
 make lint           # check package quality with Aqua.jl
 make format         # format the code with JuliaFormatter (settings in .JuliaFormatter.toml)
 ```

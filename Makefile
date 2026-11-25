@@ -24,7 +24,7 @@ help:  ## Show this help message
 
 # Setup and Installation
 .PHONY: install-dev
-install-dev:  ## Instantiate the package and examples environments and install the development tools
+install-dev:  ## Instantiate the package, examples and docs environments and install the development tools
 	$(DEV) install
 
 # Testing
@@ -39,6 +39,15 @@ test-pkg:  ## Run the unit tests with Pkg.test, in an isolated test environment
 .PHONY: examples
 examples:  ## Run all examples (figures in examples/output)
 	$(DEV) examples
+
+# Documentation
+.PHONY: docs
+docs:  ## Build the documentation (site in docs/build/1)
+	$(JULIA) --project=docs docs/make.jl
+
+.PHONY: docs-serve
+docs-serve:  ## Build the documentation and serve it locally with live reload
+	$(JULIA) --project=docs docs/make.jl serve
 
 .PHONY: coverage
 coverage:  ## Run the tests with coverage tracking; report src/ coverage and write lcov.info
