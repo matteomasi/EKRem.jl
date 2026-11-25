@@ -65,7 +65,7 @@ makedocs(;
             "Potential and boundaries" => "reference/boundaries.md",
             "Geochemistry" => "reference/geochemistry.md",
         ],
-        "Development" => ["Development set-up" => "development.md", "Internals" => "internals.md"],
+        "Development" => ["Development set-up" => "development.md", "Private functions" => "private.md"],
     ],
     checkdocs=:exports,
 )
