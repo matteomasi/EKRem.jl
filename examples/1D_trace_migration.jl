@@ -1,32 +1,43 @@
 #=
-EKRem example: migration of a trace ion in a uniform electric field
+# Migration of a trace ion
 
-A 10 cm column contains water-saturated porous medium (porosity 0.4, tortuosity factor 0.5).
-The initial pore water contains NaCl at 100 mol/m³. The voltage applied at the anode is 1 V. 
-A trace cation T⁺ (0.01 mol/m³) enters from the left reservoir.
-The electric field can be assumed to remain spatially uniform. Under this assumption, the transport 
-of the trace ion is governed by the advection–dispersion equation:
+A 10 cm column contains a water-saturated porous medium (porosity 0.4, tortuosity factor
+0.5). The initial pore water contains NaCl at 100 mol/m³. The voltage applied at the anode
+is 1 V. A trace cation T⁺ (0.01 mol/m³) enters from the left reservoir.
 
-    ∂c/∂t = τ D ∂²c/∂x² − v ∂c/∂x,    v = τ D z F E / (R T),
+The electric field can be assumed to remain spatially uniform. Under this assumption, the
+transport of the trace ion is governed by the advection–dispersion equation
 
-with c(0, t) = c₀ and c(x, 0) = 0. 
-On a semi-infinite domain its analytical solution is the following (Ogata and Banks, 1961):
+```math
+\frac{\partial c}{\partial t} = \tau D \frac{\partial^2 c}{\partial x^2} - v \frac{\partial c}{\partial x},
+\qquad v = \frac{\tau D z F E}{R T},
+```
 
-    c / c₀ = 0.5 * [erfc((x − v t) / (2 √(τ D t))) + exp(v x / (τ D)) erfc((x + v t) / (2 √(τ D t)))]
+with ``c(0, t) = c_0`` and ``c(x, 0) = 0``. On a semi-infinite domain, its analytical
+solution is (Ogata and Banks, 1961)
 
-The column is long enough for the right boundary to have no influence at the considered output times.
+```math
+\frac{c}{c_0} = \frac{1}{2} \left[ \operatorname{erfc}\left( \frac{x - v t}{2 \sqrt{\tau D t}} \right)
++ \exp\left( \frac{v x}{\tau D} \right) \operatorname{erfc}\left( \frac{x + v t}{2 \sqrt{\tau D t}} \right) \right].
+```
+
+The column is long enough for the right boundary to have no influence at the output times.
 
 Run from the repository root:
-    julia --project=examples examples/1D_trace_migration.jl
+
+```console
+julia --project=examples examples/1D_trace_migration.jl
+```
 =#
 
 using EKRem
 using Plots
 using Printf
 using SpecialFunctions: erfc
+default(; guidefontsize=13, tickfontsize=11, legendfontsize=10)   # titles: default size
 
-output = joinpath(@__DIR__, "output")
-mkpath(output)
+output = joinpath(@__DIR__, "output") #src
+mkpath(output) #src
 
 L = 0.1                    # column length (m)
 ΔV = 1.0                   # applied voltage (V)
@@ -45,14 +56,18 @@ model = Model1D(;
     porosity,
     tortuosity,
 )
-display(model)
-println()
+display(model) #src
+println() #src
+#md model
+
+# The model is run up to the last output time.
 elapsed = @elapsed run!(model, times)
 @printf("Run time: %.1f s\n\n", elapsed)
 
 Dp = tortuosity * trace.D                                   # pore-water diffusion coefficient
 v = Dp * FARADAY / (GAS_CONSTANT * 298.15) * trace.z * ΔV / L   # migration velocity (m/s)
 exact(x, t) = c0 / 2 * (erfc((x - v * t) / (2sqrt(Dp * t))) + exp(v * x / Dp) * erfc((x + v * t) / (2sqrt(Dp * t))))
+#md nothing #hide
 
 # Position where the concentration falls to c₀/2 (linear interpolation between nodes)
 function half_point(x, c)
@@ -61,11 +76,15 @@ function half_point(x, c)
 end
 
 x = coordinates(model)
-colours = ["#0072B2", "#D55E00", "#009E73"]
-markers = [:circle, :square, :diamond]
-sizes = [5, 4.3, 6.0]
+colors = ["#0072B2", "#D55E00", "#000000"]   # Okabe–Ito palette (colour-blind safe)
 p = plot(;
-    xlabel="x (cm)", ylabel="T⁺ concentration c/c₀", xlims=(0, 4), legend=:topright, size=(600, 400), margin=5Plots.mm
+    title="Trace ion T⁺",
+    xlabel="x (cm)",
+    ylabel="c/c₀",
+    xlims=(0, 4),
+    legend=:topright,
+    size=(1000, 450),
+    margin=5Plots.mm,
 )
 println("    t (s)   x(c = c₀/2), EKRem   x(c = c₀/2), analytical   max |c − c_exact| / c₀")
 for (k, t) in enumerate(times)
@@ -77,17 +96,21 @@ for (k, t) in enumerate(times)
         half_point(x, exact.(x, t)),
         maximum(abs.(c .- exact.(x, t))) / c0
     )
-    plot!(p, x .* 100, exact.(x, t) ./ c0; color=colours[k], label=@sprintf("analytical, t = %.0f h", t / 3600))
     scatter!(
         p,
-        x[1:4:end] .* 100,
-        c[1:4:end] ./ c0;
+        x[1:2:end] .* 100,
+        c[1:2:end] ./ c0;
         label=@sprintf("EKRem, t = %.0f h", t / 3600),
-        marker=markers[k],
-        markersize=sizes[k],
-        markercolor=RGBA(1, 1, 1, 0),
-        markerstrokecolor=colours[k],
+        markercolor=colors[k],
+        markerstrokewidth=0,
+        markersize=6,
     )
 end
-savefig(p, joinpath(output, "1D_trace_migration.png"))
-println("\nFigure saved in ", joinpath(output, "1D_trace_migration.png"))
+# Analytical solutions in front of the points
+xf = range(0, 0.04; length=400)
+for (k, t) in enumerate(times)
+    plot!(p, xf .* 100, exact.(xf, t) ./ c0; color=:black, label=k == 1 ? "analytical" : "")
+end
+savefig(p, joinpath(output, "1D_trace_migration.png")) #src
+println("\nFigure saved in ", joinpath(output, "1D_trace_migration.png")) #src
+#md p

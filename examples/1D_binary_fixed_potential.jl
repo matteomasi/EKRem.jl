@@ -1,38 +1,49 @@
 #=
-EKRem example: 1D setup, with binary electrolyte at steady state, under fixed applied voltage.
+# Binary electrolyte under a fixed voltage
 
-The setup consists of a 1 cm column of a water-saturated porous medium, with porosity of 0.4, 
-and tortuosity factor of 0.5. The anolyte and catholyte are filled with NaCl at 10 and 100 mol/m³, 
-respectively. The applied voltages are 0.5 V at the anode, and 0 V at the cathode. 
-The model is run until the steady state is reached. The result is compared with the analytical 
-at the steady state:
+A 1 cm column of a water-saturated porous medium (porosity 0.4, tortuosity factor 0.5) lies
+between two reservoirs with NaCl at 10 mol/m³ (anolyte) and 100 mol/m³ (catholyte). The
+potential is fixed at 0.5 V at the anode and at 0 V at the cathode. The model is run until
+the steady state is reached, and the result is compared with the analytical steady state
 
-    c(x) = c_L + (c_R − c_L) x / L
-    φ(x) = φ_L + (φ_R − φ_L) ln(c(x) / c_L) / ln(c_R / c_L)
+```math
+c(x) = c_L + (c_R - c_L) \frac{x}{L}, \qquad
+\phi(x) = \phi_L + (\phi_R - \phi_L) \frac{\ln(c(x) / c_L)}{\ln(c_R / c_L)}.
+```
 
-At steady state the flux of each ion, Jᵢ = −Dᵢ (dcᵢ/dx + zᵢ cᵢ dψ/dx) with 
-ψ = F φ / (R T), is constant along the column. Electroneutrality requires 
-c₊ = c₋ = c, so that:
+At steady state, the flux of each ion,
+``J_i = -D_i \left( \mathrm{d}c_i/\mathrm{d}x + z_i c_i \, \mathrm{d}\psi/\mathrm{d}x \right)``
+with ``\psi = F \phi / (R T)``, is constant along the column. Electroneutrality requires
+``c_+ = c_- = c``, so that
 
-    J₊ / D₊ = −(dc/dx + c dψ/dx),    J₋ / D₋ = −(dc/dx − c dψ/dx).
+```math
+\frac{J_+}{D_+} = -\left( \frac{\mathrm{d}c}{\mathrm{d}x} + c \frac{\mathrm{d}\psi}{\mathrm{d}x} \right),
+\qquad
+\frac{J_-}{D_-} = -\left( \frac{\mathrm{d}c}{\mathrm{d}x} - c \frac{\mathrm{d}\psi}{\mathrm{d}x} \right).
+```
 
-The sum of the two equations shows that dc/dx is constant, so the concentration is linear.
-Their difference shows that c dψ/dx is constant; with a linear c, its integration gives
-the logarithmic potential, whose constant is fixed by the boundary potentials. The
-diffusion coefficients enter only through the constants Jᵢ / Dᵢ, so the steady state
-depends neither on them nor on the porosity and the tortuosity factor. The comparison is
-repeated on three grids to show the convergence (second-order) of the discretisation.
+The sum of the two equations shows that ``\mathrm{d}c/\mathrm{d}x`` is constant, so the
+concentration is linear. Their difference shows that ``c \, \mathrm{d}\psi/\mathrm{d}x`` is
+constant; with a linear ``c``, its integration gives the logarithmic potential, whose
+constant is fixed by the boundary potentials. The diffusion coefficients enter only through
+the constants ``J_i / D_i``, so the steady state depends neither on them nor on the porosity
+and the tortuosity factor. The comparison is repeated on three grids to show the
+second-order convergence of the discretisation.
 
 Run from the repository root:
-    julia --project=examples examples/1D_binary_fixed_potential.jl
+
+```console
+julia --project=examples examples/1D_binary_fixed_potential.jl
+```
 =#
 
 using EKRem
 using Plots
 using Printf
+default(; guidefontsize=13, tickfontsize=11, legendfontsize=10)   # titles: default size
 
-output = joinpath(@__DIR__, "output")
-mkpath(output)
+output = joinpath(@__DIR__, "output") #src
+mkpath(output) #src
 
 L = 0.01                   # column length (m)
 cL, cR = 10.0, 100.0       # NaCl concentrations of the reservoirs (mol/m³)
@@ -44,6 +55,7 @@ species = [Species("Na+", 1, 1.33e-9), Species("Cl-", -1, 2.03e-9)]
 
 c_exact(x) = cL + (cR - cL) * x / L
 φ_exact(x) = φL + (φR - φL) * log(c_exact(x) / cL) / log(cR / cL)
+#md nothing #hide
 
 # Simulations on three grids
 grids = (25, 50, 100)                     # number of nodes
@@ -75,8 +87,9 @@ for (nodes, h, err_c, err_φ) in zip(grids, spacing, errors_c, errors_φ)
     @printf("%5d   %6.3f   %20.2e   %20.2e\n", nodes, h * 1e3, err_c, err_φ)
 end
 
-# Order of convergence p with respect to the grid spacing, assuming error ∝ hᵖ, estimated
-# from two successive grids (the spacing is not exactly halved, hence the general formula)
+# Order of convergence ``p`` with respect to the grid spacing, assuming error ``\propto h^p``,
+# estimated from two successive grids (the spacing is not exactly halved, hence the general
+# formula)
 order(e1, e2, h1, h2) = log(e1 / e2) / log(h1 / h2)
 println("\nOrder p of convergence with respect to the grid spacing h, assuming error ∝ hᵖ,")
 println("from successive grids, p = ln(e₁/e₂) / ln(h₁/h₂):")
@@ -95,35 +108,39 @@ println("(second-order scheme: p → 2 as h → 0)\n")
 model = models[end]
 x = coordinates(model)
 xf = range(0, L; length=400)
-p1 = plot(xf .* 1e3, c_exact.(xf); label="analytical", color=:black, xlabel="x (mm)", ylabel="c (mol/m³)")
+marks = 1:5:length(x)
+p1 = plot(; title="Concentration", xlabel="x (mm)", ylabel="c (mol/m³)", legend=:topleft)
 scatter!(
     p1,
-    x[1:5:end] .* 1e3,
-    concentration(model, "Na+", t_end)[1:5:end];
-    label="Na⁺ (EKRem)",
-    markersize=5,
+    x[marks] .* 1e3,
+    concentration(model, "Na+", t_end)[marks];
+    label="EKRem, Na⁺",
     marker=:square,
-    markercolor=:grey,
+    markercolor=:white,
+    markersize=6,
 )
 scatter!(
     p1,
-    x[1:5:end] .* 1e3,
-    concentration(model, "Cl-", t_end)[1:5:end];
-    label="Cl⁻ (EKRem)",
-    markersize=4,
+    x[marks] .* 1e3,
+    concentration(model, "Cl-", t_end)[marks];
+    label="EKRem, Cl⁻",
     marker=:circle,
     markercolor=:black,
+    markersize=6,
 )
-p2 = plot(xf .* 1e3, φ_exact.(xf); label="analytical", color=:black, xlabel="x (mm)", ylabel="φ (V)")
+plot!(p1, xf .* 1e3, c_exact.(xf); color=:black, label="analytical")
+p2 = plot(; title="Electric potential", xlabel="x (mm)", ylabel="φ (V)", legend=:topright)
 scatter!(
     p2,
-    x[1:5:end] .* 1e3,
-    electric_potential(model, t_end)[1:5:end];
+    x[marks] .* 1e3,
+    electric_potential(model, t_end)[marks];
     label="EKRem",
-    markersize=5,
-    marker=:circle,
-    markercolor=:white,
+    markercolor=:black,
+    markerstrokewidth=0,
+    markersize=6,
 )
-figure = plot(p1, p2; layout=(1, 2), size=(900, 350), margin=5Plots.mm)
-savefig(figure, joinpath(output, "1D_binary_fixed_potential.png"))
-println("Figure saved in ", joinpath(output, "1D_binary_fixed_potential.png"))
+plot!(p2, xf .* 1e3, φ_exact.(xf); color=:black, label="analytical")
+figure = plot(p1, p2; layout=(1, 2), size=(1000, 400), margin=5Plots.mm)
+savefig(figure, joinpath(output, "1D_binary_fixed_potential.png")) #src
+println("Figure saved in ", joinpath(output, "1D_binary_fixed_potential.png")) #src
+#md figure
