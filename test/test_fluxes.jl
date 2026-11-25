@@ -46,6 +46,22 @@ const D = 1.0e-9   # m² s⁻¹
         end
     end
 
+    @testset "Advection" begin
+        # With a water flux q, the steady profile between two nodes for a uniform field is
+        # c(s) = A + C exp(−x s), with x = zΔψ − q h / D, and h J = −D x A
+        for z in (0, 1, -2),
+            Δψ in (-3.0, 0.0, 0.5), qh in (-20.0, -1.0, 2.0, 30.0) .* D,
+            (A, C) in ((1.0, 2.0), (2.0, -0.5))
+
+            x = z * Δψ - qh / D
+            @test sg_flux(D, z, A + C, A + C * exp(-x), Δψ, qh) ≈ -D * x * A rtol = 1.0e-10
+        end
+        # Without diffusion, the flux is the upwind advective flux
+        @test sg_flux(0.0, 1, 3.0, 1.0, 5.0, 2.0) == 2.0 * 3.0
+        @test sg_flux(0.0, 1, 3.0, 1.0, 5.0, -2.0) == -2.0 * 1.0
+        @test sg_flux(0.0, 1, 3.0, 1.0, 5.0) == 0
+    end
+
     @testset "Zero flux at Boltzmann equilibrium" begin
         # c_l / c_k = exp(−zΔψ) is the equilibrium distribution (special case A = 0 above).
         # Only |zΔψ| ≤ 50 is tested: beyond, VoronoiFVM sets the smaller Bernoulli coefficient

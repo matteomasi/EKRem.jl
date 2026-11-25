@@ -120,6 +120,43 @@ end
     @test voltage(model, 1000.0) > 0
 end
 
+@testset "Electroosmosis" begin
+    # Trace species between two reservoirs (c₀ at x = 0, none at x = L) under a uniform field
+    # (fixed-field formulation) and the electroosmotic water flux q = k_eo U / L. Each species
+    # moves with the velocity v = q/n + τ D z F E / (R T), and its steady state is
+    #     c(x) = c₀ (e^Pe − e^(Pe x/L)) / (e^Pe − 1),    Pe = v L / (τ D),
+    # which the Scharfetter–Gummel flux reproduces at the nodes (constant velocity).
+    L, U, n, τ, k_eo, c0 = 0.01, 0.2, 0.4, 0.5, 2.0e-8, 0.01
+    trace = [Species("N", 0, 1.0e-9), Species("T+", 1, 1.0e-9), Species("A-", -1, 2.0e-9)]
+    background = Dict("Na+" => 100.0, "Cl-" => 100.0)
+    x = collect(range(0, L; length=21))
+    model = Model1D(;
+        length=L,
+        grid=x,
+        species=[SPECIES[1:2]; trace],
+        initial=background,
+        left=Reservoir(merge(background, Dict(s.name => c0 for s in trace)); potential=U),
+        right=Reservoir(background; potential=0.0),
+        potential=FixedField(),
+        porosity=n,
+        tortuosity=τ,
+        electroosmotic_permeability=k_eo,
+    )
+    q = k_eo * U / L
+    @test electroosmotic_flow(model, 0.0) ≈ q
+    run!(model, [1.0e6]; progress=false)
+    @test electroosmotic_flow(model, 1.0e6) ≈ q
+    for s in trace
+        v = q / n + τ * s.D * s.z * FARADAY / (GAS_CONSTANT * 298.15) * U / L
+        Pe = v * L / (τ * s.D)
+        exact = c0 .* (exp(Pe) .- exp.(Pe .* x ./ L)) ./ (exp(Pe) - 1)
+        @test concentration(model, s.name, 1.0e6) ≈ exact atol = 1.0e-6 * c0
+    end
+    # Without electroosmotic permeability, there is no water flux
+    @test electroosmotic_flow(small_model(), 0.0) == 0
+    @test_throws ArgumentError small_model(; electroosmotic_permeability=Inf)
+end
+
 @testset "Progress report" begin
     io = IOBuffer()
     p = EKRem.Progress(0.0, 1000.0; io, interval=2.0)
@@ -171,13 +208,15 @@ end
 
 @testset "Residual of the transport equations" begin
     # The residual evaluated by EKRem (without derivatives) agrees with the assembly of
-    # VoronoiFVM, for the three formulations and for electrode compartments
+    # VoronoiFVM, for the three formulations, with electroosmosis and for electrode
+    # compartments
     c = Dict("Na+" => 10.0, "Cl-" => 10.0, "OH-" => 1.0e-3)
     species = [SPECIES; Species("H+", 1, 9.31e-9)]
     c["H+"] = 1.0e-3
     models = [
         small_model(),
         small_model(; potential=FixedField()),
+        small_model(; electroosmotic_permeability=1.0e-8),
         Model1D(;
             length=0.01,
             grid=collect(range(0, 0.01; length=21)),
@@ -187,6 +226,7 @@ end
             right=Compartment(c; volume=1.0e-4, potential=0.0),
             potential=ChargeConservation(),
             area=1.0e-3,
+            electroosmotic_permeability=-1.0e-8,   # water flux toward the left compartment
         ),
     ]
     for model in models

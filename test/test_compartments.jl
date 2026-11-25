@@ -11,7 +11,7 @@ const WATER_SPECIES = [
 @testset "Electrode compartments" begin
     nacl = Dict("Na+" => 10.0, "Cl-" => 10.0)
     i = 10.0   # A/m², applied at the left boundary (anode)
-    column(left, right; area=1.0e-3) = Model1D(;
+    column(left, right; area=1.0e-3, kwargs...) = Model1D(;
         length=0.02,
         grid=collect(range(0, 0.02; length=21)),
         species=WATER_SPECIES,
@@ -22,6 +22,7 @@ const WATER_SPECIES = [
         porosity=0.4,
         tortuosity=0.5,
         area,
+        kwargs...,
     )
 
     @testset "Mass balances" begin
@@ -59,6 +60,24 @@ const WATER_SPECIES = [
         )
         run!(flushed, [600.0]; progress=false)
         @test amount(flushed, "Na+", 600.0) < amount(flushed, "Na+", 0.0)
+
+        # Electroosmosis from the anode to the cathode: the cathode compartment overflows,
+        # and Na+ leaves the system at the rate q c(L); the water flux follows the voltage
+        k_eo = 1.0e-8
+        eo = column(
+            Compartment(nacl; volume=1.0e-4, current_density=i),
+            Compartment(nacl; volume=1.0e-4, potential=0.0);
+            electroosmotic_permeability=k_eo,
+        )
+        t = collect(0.0:60.0:1800.0)
+        run!(eo, t[2:end]; progress=false)
+        q = [electroosmotic_flow(eo, tk) for tk in t]
+        @test q ≈ [k_eo * voltage(eo, tk) / 0.02 for tk in t]
+        @test all(q .> 0)
+        outflow = q .* [concentration(eo, "Na+", tk)[end] for tk in t]
+        removed = sum((outflow[1:(end - 1)] .+ outflow[2:end]) ./ 2 .* diff(t))   # trapezoidal rule
+        @test amount(eo, "Na+", 0.0) - amount(eo, "Na+", t[end]) ≈ removed rtol = 1.0e-2
+        @test all(current_density(eo, t[end]) .≈ i)
     end
 
     @testset "Input checks" begin
