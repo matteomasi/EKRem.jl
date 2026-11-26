@@ -8,7 +8,7 @@ Three models are available, and they are organised by spatial dimension: `Model1
 
 ## Example
 
-Migration of a trace cation through a NaCl solution under an applied voltage of 1 V across a 10 cm column:
+Electromigration of a trace cation through a NaCl solution under an applied voltage of 1 V across a 10 cm column:
 
 ```julia
 using EKRem
@@ -40,15 +40,15 @@ For current control, `potential=1.0` of the left reservoir is replaced by `curre
 
 Complete simulations are in the [`examples`](examples/) folder; the file names begin with the dimension of the model. Each example compares the results with an analytical solution and saves a figure in `examples/output/`:
 
+- `1D_trace_electromigration.jl`: electromigration and electroosmosis of a trace ion in a uniform electric field (Ogata–Banks solution);
 - `1D_binary_fixed_potential.jl`: steady state of a binary electrolyte between two reservoirs at different concentrations and potentials, on three grids;
 - `1D_binary_fixed_current.jl`: the same column under a fixed current density (charge-conservation formulation): potential at the anode as a function of time, and steady state;
-- `1D_trace_migration.jl`: migration of a trace ion in a uniform electric field (Ogata–Banks solution);
 - `1D_benchmark_krabbenhoft.jl`: migration test with four monovalent ions (Na⁺, Cl⁻, K⁺, OH⁻) under a fixed electric potential difference, Nernst–Planck–Poisson equations: transient profiles, and steady state compared with the analytical solution of Krabbenhøft and Krabbenhøft (2008).
 
 The examples have their own environment, which also contains the plotting package. They are run from the repository root, e.g.
 
 ```console
-julia --project=examples examples/1D_trace_migration.jl
+julia --project=examples examples/1D_trace_electromigration.jl
 ```
 
 or all together with `make examples`.

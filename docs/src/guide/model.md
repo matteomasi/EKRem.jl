@@ -39,7 +39,7 @@ PHREEQC database and input (see [Geochemical reactions](@ref reactions-guide)).
 the medium ([`PorousMedium`](@ref)). The effective diffusion coefficient of each species is
 ``D_i^* = n \tau D_i``. With the default values (``n = \tau = 1``, no electroosmosis), the
 equations describe a free solution. `temperature` (K) enters the ratio ``F/(R T)`` of the
-migration term.
+electromigration term.
 
 With a non-zero `electroosmotic_permeability` ``k_{eo}`` (m² V⁻¹ s⁻¹), the pore water flows
 with the uniform flux ``q = k_{eo} [\phi(0) - \phi(L)] / L``, from the anode to the cathode

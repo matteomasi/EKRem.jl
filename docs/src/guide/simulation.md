@@ -19,7 +19,7 @@ of each species.
 
 | `solver` | Method | Suited to |
 |:---------|:-------|:----------|
-| `:Rodas5P` (default) | Rosenbrock method of order 5 | sharp fronts that move by migration |
+| `:Rodas5P` (default) | Rosenbrock method of order 5 | sharp fronts that move by electromigration |
 | `:FBDF` | backward differentiation formulas of variable order (1 to 5) | long simulations with slowly varying solutions |
 
 `Rodas5P` conserves the amounts of the species to round-off. `FBDF` conserves them only to

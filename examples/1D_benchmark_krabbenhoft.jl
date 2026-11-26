@@ -1,8 +1,8 @@
 #=
 # Migration test: Krabbenhøft benchmark
 
-Migration of Na⁺, Cl⁻, K⁺ and OH⁻ under a fixed electric potential difference, compared
-with the analytical steady state of Krabbenhøft and Krabbenhøft (2008).
+Electromigration of Na⁺, Cl⁻, K⁺ and OH⁻ under a fixed electric potential difference,
+compared with the analytical steady state of Krabbenhøft and Krabbenhøft (2008).
 
 ## Setup
 
@@ -78,6 +78,7 @@ mkpath(output) #src
 L = 0.01                   # length of the domain (m)
 φ0, φL = 3.0, 0.0          # electric potential at x = 0 (anode) and at x = L (cathode) (V)
 T = 298.15                 # temperature (K)
+#md nothing #hide
 
 # Aqueous diffusion coefficients ``D_i`` (m²/s) and boundary concentrations ``c_{i,0}`` and
 # ``c_{i,L}`` (mol/m³)
@@ -86,6 +87,7 @@ species = [
 ]
 ci0 = Dict("Na+" => 25.0, "Cl-" => 0.0, "K+" => 83.0, "OH-" => 108.0)
 ciL = Dict("Na+" => 525.0, "Cl-" => 500.0, "K+" => 83.0, "OH-" => 108.0)
+#md nothing #hide
 
 # Analytical steady state (Eqs. 16 and 17)
 k = FARADAY / (GAS_CONSTANT * T)

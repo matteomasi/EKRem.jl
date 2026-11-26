@@ -175,7 +175,7 @@ J_{kl} = \frac{D^*}{h_{kl}} \left[ B(x_{kl})\, c_k - B(-x_{kl})\, c_l \right],
 with ``\Delta\psi_{kl} = \psi_l - \psi_k`` and ``q_{kl}`` the water flux from ``k`` to ``l``.
 The expression is exact for a constant flux, a linear potential and a constant water flux
 along the edge. It reduces to central differences where diffusion dominates and to
-upwinding where migration or advection dominates.
+upwinding where electromigration or advection dominates.
 The examples show second-order convergence of the steady-state solutions with respect to the
 grid spacing.
 

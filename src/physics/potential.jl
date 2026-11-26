@@ -31,7 +31,7 @@ electroneutral solution:
 ```
 
 where ``\mathbf{J}_i`` are the Nernst–Planck fluxes (per unit bulk area) and
-``\mathbf{i}`` is the current density. The current density includes the migration current,
+``\mathbf{i}`` is the current density. The current density includes the electromigration current,
 proportional to the conductivity ``\sigma = F^2 / (R T) \sum_i z_i^2 D_i^* c_i``, and the
 diffusion current.
 

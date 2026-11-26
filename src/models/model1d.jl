@@ -337,7 +337,7 @@ display is updated every 0.5 s by default; the interval is changed with, e.g.,
 `solver` selects the time integration method (both from OrdinaryDiffEq.jl, with error
 control):
 - `:Rodas5P` (default): Rosenbrock method of order 5. Accurate and fast for sharp fronts
-  that move by migration; one Jacobian factorisation per step.
+  that move by electromigration; one Jacobian factorisation per step.
 - `:FBDF`: backward differentiation formulas of variable order (1 to 5). Fewer Jacobian
   evaluations per step; suited to long simulations with slowly varying solutions.
 
