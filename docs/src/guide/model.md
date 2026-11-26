@@ -61,9 +61,11 @@ applied current density (`current_density`, A m⁻²):
 The current density is positive where the current enters the column (anode) and negative
 where it leaves it (cathode).
 
-Electrode compartments require current control and the cross-sectional `area` of the
-column, which converts the compartment volume and the flushing rate to quantities per unit
-area. Their H⁺ and OH⁻ production requires both species among the transported species.
+Electrode compartments require the cross-sectional `area` of the column, which converts the
+compartment volume and the flushing rate to quantities per unit area. They can be used under
+current or voltage control. The H⁺ and OH⁻ produced by electrolysis must be among the
+transported species (both of them under voltage control, where the anode follows from the
+direction of the computed current).
 
 ```julia
 model = Model1D(;

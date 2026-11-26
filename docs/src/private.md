@@ -14,6 +14,7 @@ EKRem.solve_potential!
 EKRem.ode_function
 EKRem.residual!
 EKRem.update_darcy!
+EKRem.electrode_production!
 EKRem.SOLVERS
 EKRem.PROGRESS_INTERVAL
 ```

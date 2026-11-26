@@ -85,8 +85,7 @@ c = concentration(model, "T+", 1.0e5)
 | Potential: Poisson, charge conservation, fixed field | implemented |
 | Voltage control and current control | implemented |
 | Geochemical reactions (PhreeqcRM), sequential non-iterative coupling | implemented |
-| Electrode compartments under current control | implemented |
-| Electrode compartments under voltage control | not implemented |
+| Electrode compartments under current or voltage control | implemented |
 | Electroosmosis (uniform electroosmotic permeability) | implemented |
 | `Model2D`, `Model3D` | not implemented |
 

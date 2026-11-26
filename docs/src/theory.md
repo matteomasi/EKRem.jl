@@ -148,11 +148,12 @@ at the cathode,
 \mathrm{2\,H_2O + 2\,e^- \to H_2 + 2\,OH^-},
 ```
 
-at the rate ``R = I / F``, where ``I = |i_\mathrm{app}| A`` is the current; the gases are
-assumed to escape. Because the rate of electrolysis is set by the current, compartments
-require current control. The anode is the boundary where the current enters the column:
-the boundary with the applied current density if ``i_\mathrm{app} > 0``, and the other
-boundary otherwise.
+at the rate ``R = I / F``, where ``I = |i| A`` is the current; the gases are assumed to
+escape. The anode is the boundary where the current enters the column. Under current
+control, ``i`` is the applied current density. Under voltage control, ``i`` is the computed
+current density between the compartment node and its neighbour, so that the charge
+produced by electrolysis equals the charge carried into the column and the compartment
+remains electroneutral.
 
 In the discrete equations, the compartment is represented by the boundary node, with the
 storage ``V/A`` per unit area. The control volume of this node also contains half of the
