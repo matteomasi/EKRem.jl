@@ -45,6 +45,10 @@ examples:  ## Run all examples (figures in the output/ folder of each group)
 docs:  ## Build the documentation (site in docs/build/1)
 	$(JULIA) --project=docs docs/make.jl
 
+.PHONY: docs-rerun
+docs-rerun:  ## Build the documentation, running all examples again
+	$(JULIA) --project=docs docs/make.jl rerun
+
 .PHONY: docs-serve
 docs-serve:  ## Build the documentation and serve it locally with live reload
 	$(JULIA) --project=docs docs/make.jl serve

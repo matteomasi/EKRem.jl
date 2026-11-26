@@ -1,10 +1,12 @@
 # Documentation of EKRem: Documenter.jl with the VitePress backend (DocumenterVitepress.jl).
-# The example scripts are converted to documentation pages by Literate.jl and run during the
-# build.
+# The example scripts are converted to documentation pages by Literate.jl, which runs them
+# and writes their output and figures into the pages. A script is run again only when it,
+# the data in its folder or the source code of EKRem have changed since the last build.
 #
 # Usage (from the repository root):
 #     julia --project=docs docs/make.jl          # static site in docs/build/1
 #     julia --project=docs docs/make.jl serve    # local server with live reload
+#     julia --project=docs docs/make.jl rerun    # run all examples again
 #
 # The VitePress packages (docs/package.json) are installed by npm during the first build,
 # which requires internet access. Node.js is provided by DocumenterVitepress, except on
@@ -17,8 +19,10 @@ using Documenter
 using DocumenterVitepress
 using EKRem
 using Literate
+using SHA
 
 const SERVE = "serve" in ARGS
+const RERUN = "rerun" in ARGS
 const ROOT = dirname(@__DIR__)
 const SRC = joinpath(@__DIR__, "src")
 
@@ -30,17 +34,41 @@ example_groups = [
         "benchmarks/1D/1D_binary_fixed_potential.jl" => "Binary electrolyte, fixed voltage",
         "benchmarks/1D/1D_binary_fixed_current.jl" => "Binary electrolyte, fixed current",
         "benchmarks/1D/1D_benchmark_krabbenhoft.jl" => "Krabbenhøft and Krabbenhøft benchmark",
+        "benchmarks/1D/1D_benchmark_phreeqc.jl" => "PHREEQC Ampere benchmark",
     ],
+    "Examples" => ["misc/1D_compartments_fixed_voltage.jl" => "Electrode compartments under a fixed voltage"],
 ]
-function example_page(script, title)
-    dir = joinpath(SRC, "examples", dirname(script))
-    Literate.markdown(joinpath(ROOT, "examples", script), dir; documenter=true, credit=false)
-    return title => joinpath("examples", replace(script, ".jl" => ".md"))
+
+# Fingerprint of an example: the script, the files in the data/ folder next to it, the source
+# code and the dependencies of EKRem
+function fingerprint(script)
+    data = joinpath(dirname(script), "data")
+    files = [script; isdir(data) ? readdir(data; join=true) : String[]; joinpath(ROOT, "Project.toml")]
+    append!(files, sort([joinpath(r, f) for (r, _, fs) in walkdir(joinpath(ROOT, "src")) for f in fs]))
+    context = SHA.SHA1_CTX()
+    foreach(f -> SHA.update!(context, read(f)), files)
+    return bytes2hex(SHA.digest!(context))
 end
-example_pages = [group => [example_page(s, t) for (s, t) in scripts] for (group, scripts) in example_groups]
 
 # Only the last line of the progress report of each run is shown in the pages
 EKRem.PROGRESS_INTERVAL[] = Inf
+
+function example_page(script, title)
+    path = joinpath(ROOT, "examples", script)
+    dir = joinpath(SRC, "examples", dirname(script))
+    page = joinpath(dir, replace(basename(script), ".jl" => ".md"))
+    stamp = page * ".sha1"
+    key = fingerprint(path)
+    if RERUN || !isfile(page) || !isfile(stamp) || read(stamp, String) != key
+        @info "Running example $script"
+        Literate.markdown(path, dir; documenter=true, execute=true, credit=false)
+        write(stamp, key)
+    else
+        @info "Example $script unchanged: not run again"
+    end
+    return title => joinpath("examples", replace(script, ".jl" => ".md"))
+end
+example_pages = [group => [example_page(s, t) for (s, t) in scripts] for (group, scripts) in example_groups]
 
 makedocs(;
     modules=[EKRem],
