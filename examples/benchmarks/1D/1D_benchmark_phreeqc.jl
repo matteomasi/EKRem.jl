@@ -14,11 +14,11 @@ https://www.hydrochemistry.eu/exmpls/electro_dif.html.
 The column has a length of 0.30 m and a cross-sectional area of 0.01 m². The porosity is 0.4,
 and the tortuosity factor is 0.2. The pore water contains Na⁺ (10 mol/m³), Cl⁻ (12 mol/m³)
 and nickel (1 mol/m³) at pH 7, and it is in equilibrium with the surface of the solid matrix.
-A potential difference of 20 V is applied between the electrodes. The anode lies in a closed
-electrode compartment of 4 L, where water electrolysis produces H⁺. The cathode compartment
-is assumed to be completely buffered, so the concentrations at ``x = L`` are fixed.
+A potential difference of 20 V is applied between the electrodes. The anode is placed in a closed
+electrode compartment of 4 L. The cathode compartment is assumed to be completely buffered, 
+so the concentrations at ``x = L`` are fixed.
 
-Three reactions describe the surface (Sprocati et al., 2019, Eqs. 18–20):
+Three surface reactions are defined (Sprocati et al., 2019, Eqs. 18–20):
 
 ```math
 \mathrm{SurfOH + H^+ \rightleftharpoons SurfOH_2^+}, \qquad \log K = 3.8,
@@ -32,15 +32,15 @@ Three reactions describe the surface (Sprocati et al., 2019, Eqs. 18–20):
 
 The surface model has no electrostatic correction, and the surface has 0.015 mol of sites
 per litre of pore water. The aqueous species and their equilibrium constants are taken from
-the database `minteq.v4.dat`, which is distributed with PhreeqcRM. H⁺, OH⁻, Na⁺, Cl⁻, Ni²⁺
-and NiCl⁺ have the diffusion coefficients of Table 4 of Sprocati et al. (2019). The other
-aqueous species have a diffusion coefficient of ``10^{-9}`` m²/s.
+the database `minteq.v4.dat`, distributed with PhreeqcRM. The diffusion coefficients of 
+H⁺, OH⁻, Na⁺, Cl⁻, Ni²⁺ and NiCl⁺ are from Sprocati et al. (2019). The other aqueous species 
+have a diffusion coefficient of ``10^{-9}`` m²/s.
 
 ## Reference solution
 
 PHREEQC (Ampere) computes the reference solution with the input file
 `data/1D_benchmark_phreeqc_ampere.phr`, on 240 cells with explicit time steps of 30 s. The
-input file contains the same chemical definitions. The results are stored in the files
+input file contains the same chemical definitions. The results are saved in the files
 `data/1D_benchmark_phreeqc_profiles.tsv` and `data/1D_benchmark_phreeqc_current.tsv`. In
 PHREEQC, the anode compartment is a boundary cell with 4 kg of water in equilibrium with
 O₂(g), and the cathode is a boundary cell with a large volume of water. PHREEQC computes the
@@ -67,10 +67,11 @@ mkpath(output) #src
 library = phreeqcrm_library()
 library === nothing && error("The PhreeqcRM library is not set; see set_phreeqcrm_library")
 database = joinpath(dirname(dirname(library)), "database", "minteq.v4.dat")
+#md nothing #hide
 
-# Reactions of minteq.v4 redefined with the diffusion coefficients of Table 4 (-dw), and
-# surface complexation without electrostatic correction (-no_edl). The amounts of the
-# surface are per litre of pore water.
+# Reactions from minteq.v4 database, redefined with the diffusion coefficients (-dw). 
+# The surface complexation are without electrostatic correction (-no_edl). 
+# The amounts of the surface are per litre of pore water.
 input = """
 SOLUTION_SPECIES
 H+ = H+;  log_k 0;  -dw 9.31e-9
@@ -98,9 +99,11 @@ SELECTED_OUTPUT 1
 -molalities SurfONi+ SurfOH2+ SurfOH
 END
 """
+#md nothing #hide
 
-# Transported species: all aqueous species except water, with the diffusion coefficients
-# of the database and 1e-9 m²/s for the species without one
+# Definition of the transported species
+# All aqueous species except water are selected. For the species without a diffusion coefficient
+# in the database, a value of 1e-9 m²/s is used.
 chemistry = Chemistry(1; database, input, initial=(solution=1,))
 species = [Species(s.name, s.z, s.D > 0 ? s.D : 1.0e-9) for s in aqueous_species(chemistry) if s.name != "H2O"]
 close(chemistry)
@@ -134,11 +137,15 @@ println() #src
 hour = 3600.0
 times = collect(2.0:2.0:80.0) .* hour
 t_end = times[end]
-elapsed = @elapsed run!(model, times; coupling_step=300.0)
-@printf("Run time: %.0f s\n", elapsed)
+elapsed = @elapsed run!(model, times; coupling_step=300.0) #src
+@printf("Run time: %.0f s\n", elapsed) #src
+#md run!(model, times; coupling_step=300.0, progress=false)
+#md nothing #hide
 
-# Reference solution of PHREEQC (Ampere): profiles at 80 h and current every 2 h. Each line
-# of the files written by PHREEQC begins with a tab.
+# The reference solution of PHREEQC (Ampere) contains the profiles at 80 h and the current
+# every 2 h.
+#hide-begin
+# Each line of the files written by PHREEQC begins with a tab.
 function read_table(file)
     lines = filter(!isempty, strip.(readlines(file)))
     header = split(lines[1], '\t')
@@ -151,13 +158,18 @@ ref_current = read_table(joinpath(data, "1D_benchmark_phreeqc_current.tsv"))
 
 J = [current_density(model, t)[1] for t in times]             # A/m²
 J_ref = ref_current["current_A"] ./ A
-@printf("Current density at 80 h: EKRem %.3f A/m², PHREEQC %.3f A/m²\n", J[end], J_ref[end])
+@printf("Current density at 80 h: EKRem %.3f A/m², PHREEQC %.3f A/m²\n", J[end], J_ref[end]) #src
+#hide-end
 #md nothing #hide
 
-# Contribution of each ion to the electrical conductivity of the medium,
-# ``\sigma_i = F^2 z_i^2 n \tau D_i c_i / (R T)``
+# In the figure below EKRem (lines) is compared with PHREEQC (points).
+# In the panel (a) the concentrations of the ions and pH are shown, together with the pH on the right axis.
+# The panel (b) shows the surface species concentrations. The panel (c) shows the contribution 
+# of each ion to the electrical conductivity of the porous medium, calculated as
+# ``\sigma_i = F^2 z_i^2 n \tau D_i c_i / (R T)``.
+# The panel (d) shows the evolution of the current density over time.
+#hide-begin
 σ(z, D, c) = FARADAY^2 / (GAS_CONSTANT * 298.15) * z^2 * porosity * tortuosity * D .* c
-#md nothing #hide
 
 # Profiles at 80 h: EKRem (lines) and PHREEQC (points, in every sixth cell)
 x = coordinates(model)
@@ -218,7 +230,8 @@ scatter!(p4, ref_current["time_h"][2:end], J_ref[2:end]; color=:black, label="PH
 figure = plot(p1, p2, p3, p4; layout=(2, 2), size=(1000, 800), margin=5Plots.mm)
 savefig(figure, joinpath(output, "1D_benchmark_phreeqc.png")) #src
 println("Figure saved in ", joinpath(output, "1D_benchmark_phreeqc.png")) #src
-#md figure
+#hide-end
+#md figure #hide
 
 #=
 ## References
