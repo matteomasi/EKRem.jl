@@ -80,13 +80,53 @@ const WATER_SPECIES = [
         @test all(current_density(eo, t[end]) .≈ i)
     end
 
+    @testset "Voltage control" begin
+        # Closed compartments under a fixed voltage: the electrolysis rate follows from the
+        # computed current, so that the compartments remain electroneutral; H+ is produced at
+        # the anode and OH- at the cathode, both at the rate i / F
+        U = 2.0
+        model = column(Compartment(nacl; volume=1.0e-4, potential=U), Compartment(nacl; volume=1.0e-4, potential=0.0))
+        t = collect(0.0:60.0:1800.0)
+        run!(model, t[2:end]; progress=false)
+        Δ(name) = amount(model, name, t[end]) - amount(model, name, 0.0)
+        @test abs(Δ("Na+")) < 1.0e-12 * amount(model, "Na+", 0.0)
+        @test abs(Δ("Cl-")) < 1.0e-12 * amount(model, "Cl-", 0.0)
+        current = [current_density(model, tk)[1] for tk in t]
+        @test all(current .> 0)
+        @test all(current_density(model, t[end]) .≈ current[end])
+        charge = sum((current[1:(end - 1)] .+ current[2:end]) ./ 2 .* diff(t)) / FARADAY   # trapezoidal rule
+        @test Δ("H+") ≈ Δ("OH-") rtol = 1.0e-10
+        @test Δ("H+") ≈ charge rtol = 1.0e-3
+        for tk in t
+            c = [concentration(model, s.name, tk) for s in WATER_SPECIES]
+            imbalance = c[1] .- c[2] .+ c[3] .- c[4]
+            @test abs(imbalance[1]) < 1.0e-10 && abs(imbalance[end]) < 1.0e-10
+        end
+        @test concentration(model, "H+", t[end])[1] > concentration(model, "H+", t[end])[end]
+        @test concentration(model, "OH-", t[end])[end] > concentration(model, "OH-", t[end])[1]
+
+        # Reversed polarity: the left electrode is the cathode
+        reversed = column(
+            Compartment(nacl; volume=1.0e-4, potential=0.0), Compartment(nacl; volume=1.0e-4, potential=U)
+        )
+        run!(reversed, [600.0]; progress=false)
+        @test concentration(reversed, "OH-", 600.0)[1] > concentration(reversed, "OH-", 600.0)[end]
+        @test concentration(reversed, "H+", 600.0)[end] > concentration(reversed, "H+", 600.0)[1]
+    end
+
     @testset "Input checks" begin
         compartment = Compartment(nacl; volume=1.0e-4, current_density=i)
         reservoir = Reservoir(nacl; potential=0.0)
         @test_throws ArgumentError column(compartment, reservoir; area=nothing)              # area required
-        @test_throws ArgumentError column(                                                   # voltage control
-            Compartment(nacl; volume=1.0e-4, potential=1.0),
-            reservoir,
+        @test_throws ArgumentError Model1D(;                                                 # voltage control:
+            length=0.02,                                                                      # H+ and OH- required
+            grid=collect(range(0, 0.02; length=21)),
+            species=WATER_SPECIES[1:3],
+            initial=nacl,
+            left=Compartment(nacl; volume=1.0e-4, potential=1.0),
+            right=reservoir,
+            potential=ChargeConservation(),
+            area=1.0e-3,
         )
         @test_throws ArgumentError Compartment(nacl; volume=0.0, current_density=i)
         @test_throws ArgumentError Compartment(nacl; volume=1.0e-4, flow=-1.0, current_density=i)

@@ -228,6 +228,17 @@ end
             area=1.0e-3,
             electroosmotic_permeability=-1.0e-8,   # water flux toward the left compartment
         ),
+        Model1D(;                                  # compartments under voltage control
+            length=0.01,
+            grid=collect(range(0, 0.01; length=21)),
+            species,
+            initial=c,
+            left=Compartment(c; volume=1.0e-4, potential=1.0),
+            right=Compartment(c; volume=1.0e-4, potential=0.0),
+            potential=ChargeConservation(),
+            area=1.0e-3,
+            electroosmotic_permeability=1.0e-8,
+        ),
     ]
     for model in models
         u = copy(model.state)
