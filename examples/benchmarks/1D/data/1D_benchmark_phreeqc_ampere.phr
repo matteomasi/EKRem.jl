@@ -1,0 +1,84 @@
+# PHREEQC Ampere benchmark: reference solution of PHREEQC (version "Ampere")
+# for examples/benchmarks/1D/1D_benchmark_phreeqc.jl.
+#
+# Run from this folder with the database minteq.v4.dat of PhreeqcRM:
+#     phreeqc 1D_benchmark_phreeqc_ampere.phr 1D_benchmark_phreeqc_ampere.out <path>/minteq.v4.dat
+# Output: 1D_benchmark_phreeqc_profiles.tsv (all cells at 80 h) and
+# 1D_benchmark_phreeqc_current.tsv (current every 2 h).
+#
+# Column: 0.30 m, 240 cells of 1.25 mm, cross-sectional area A = 0.01 m2, porosity 0.4,
+# tortuosity factor 0.2. Water per cell: 0.00125 m * A * 0.4 * 1000 kg/m3 = 0.005 kg.
+# Surface per cell: 0.015 mol sites and 1500 g of solid per kg of water.
+# The pore diffusion coefficient tau * Dw = 0.2 Dw is given by the porosity exponent
+# ln(0.2) / ln(0.4) = 1.756 of -multi_d, so that the effective coefficient is n * tau * Dw.
+# Anode: boundary cell 0 with 4 kg of water (electrode compartment of 4 L) at 20 V, in
+# equilibrium with O2(g). Cathode: boundary cell 241 with 1e5 kg of water (fixed composition).
+
+SOLUTION_SPECIES
+H+ = H+;  log_k 0;  -dw 9.31e-9
+Na+ = Na+;  log_k 0;  -dw 1.33e-9
+Cl- = Cl-;  log_k 0;  -dw 2.03e-9
+H2O = OH- + H+;  log_k -13.997;  delta_h 55.81 kJ;  -gamma 3.5 0;  -dw 5.27e-9
+Ni+2 = Ni+2;  log_k 0;  -dw 6.6e-10
+Ni+2 + Cl- = NiCl+;  log_k 0.408;  delta_h 2 kJ;  -gamma 0 0;  -dw 1e-9
+SURFACE_MASTER_SPECIES
+Surf SurfOH
+SURFACE_SPECIES
+SurfOH = SurfOH;  log_k 0
+SurfOH + H+ = SurfOH2+;  log_k 3.8
+SurfOH = SurfO- + H+;  log_k -9.4
+SurfOH + Ni+2 = SurfONi+ + H+;  log_k -2.6
+
+SOLUTION 1-240
+-water 0.005
+pH 7;  Na 10;  Cl 12 charge;  Ni 1.0
+SURFACE 1-240
+SurfOH 7.5e-5 24 7.5
+-equilibrate 1
+-no_edl
+SOLUTION 0  anode compartment
+-water 4
+pH 7;  Na 10;  Cl 12 charge;  Ni 1.0
+potential 20
+EQUILIBRIUM_PHASES 0
+O2(g) -10 0
+SOLUTION 241  cathode
+-water 1e5
+pH 7;  Na 10;  Cl 12 charge;  Ni 1.0
+END
+
+# Each output writes its own lines (-new_line false): the profiles at 80 h, and the current
+# (the same in all cells) once per output time
+SELECTED_OUTPUT 1
+-file 1D_benchmark_phreeqc_profiles.tsv
+-reset false
+-new_line false
+USER_PUNCH 1
+10 if total_time < 80 * 3600 - 1 then end
+20 t$ = chr$(9)
+30 if cell_no = 0 then punch "x_m" + t$ + "pH" + t$ + "Na" + t$ + "Cl" + t$ + "Ni" + t$ + "NiCl" + t$ + "H" + t$ + "SurfONi" + t$ + "SurfOH2" + t$ + "SurfOH" + eol$
+40 a$ = str_e$(dist, 12, 5) + t$ + str_e$(-la("H+"), 12, 5) + t$ + str_e$(mol("Na+") * 1e3, 12, 5) + t$ + str_e$(mol("Cl-") * 1e3, 12, 5)
+50 a$ = a$ + t$ + str_e$(mol("Ni+2") * 1e3, 12, 5) + t$ + str_e$(mol("NiCl+") * 1e3, 12, 5) + t$ + str_e$(mol("H+") * 1e3, 12, 5)
+60 punch a$ + t$ + str_e$(mol("SurfONi+"), 12, 5) + t$ + str_e$(mol("SurfOH2+"), 12, 5) + t$ + str_e$(mol("SurfOH"), 12, 5) + eol$
+SELECTED_OUTPUT 2
+-file 1D_benchmark_phreeqc_current.tsv
+-reset false
+-new_line false
+USER_PUNCH 2
+10 if cell_no <> 0 then end
+20 if total_time = 0 then punch "time_h" + chr$(9) + "current_A" + eol$
+30 punch str_e$(total_time / 3600, 12, 5) + chr$(9) + str_e$(current_A, 12, 5) + eol$
+
+TRANSPORT
+-cells 240
+-lengths 240*0.00125
+-boundary_conditions 1 1
+-flow_direction diffusion_only
+-dispersivities 240*0
+-multi_d true 1e-9 0.4 0.0 1.756 false
+-time_step 30
+-shifts 9600
+-punch_cells 0-241
+-punch_frequency 240
+-print_frequency 9600
+END
