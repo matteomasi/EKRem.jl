@@ -15,7 +15,7 @@ hero:
       link: /theory
     - theme: alt
       text: Examples
-      link: /examples/1D_binary_fixed_potential
+      link: /examples/1D_trace_electromigration
 
 features:
   - title: Nernst–Planck transport
@@ -51,7 +51,7 @@ setups, and `Model2D` and `Model3D` for field applications.
 
 ## Quick start
 
-Migration of a trace cation through a NaCl solution under an applied voltage of 1 V across
+Electromigration of a trace cation through a NaCl solution under an applied voltage of 1 V across
 a 10 cm column:
 
 ```julia

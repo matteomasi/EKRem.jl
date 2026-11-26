@@ -25,9 +25,9 @@ const SRC = joinpath(@__DIR__, "src")
 # Example scripts → Markdown pages (lines ending with `#src` are omitted, lines starting with
 # `#md` appear only in the pages)
 examples = [
+    "1D_trace_electromigration.jl" => "Electromigration and electroosmosis of a trace ion",
     "1D_binary_fixed_potential.jl" => "Binary electrolyte, fixed voltage",
     "1D_binary_fixed_current.jl" => "Binary electrolyte, fixed current",
-    "1D_trace_migration.jl" => "Migration of a trace ion",
     "1D_benchmark_krabbenhoft.jl" => "Krabbenhøft benchmark",
 ]
 example_pages = map(examples) do (script, title)
