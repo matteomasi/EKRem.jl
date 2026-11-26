@@ -16,6 +16,7 @@ using OrdinaryDiffEqRosenbrock: Rodas5P
 using PrecompileTools: @compile_workload, @setup_workload
 using Printf: @sprintf
 using SciMLBase: SciMLBase
+using SparseArrays: sparse
 using VoronoiFVM: VoronoiFVM, fbernoulli
 
 include("constants.jl")
@@ -95,6 +96,18 @@ export react!, selected_output
             area=1.0e-4,
         )
         run!(compartment, [1.0]; progress=false)
+        # Compartments under voltage control
+        compartments = Model1D(;
+            length=1.0e-3,
+            grid=(h_min=1.0e-4, h_max=2.0e-4),
+            species=water,
+            initial=c,
+            left=Compartment(c; volume=1.0e-6, potential=0.1),
+            right=Compartment(c; volume=1.0e-6, potential=0.0),
+            potential=ChargeConservation(),
+            area=1.0e-4,
+        )
+        run!(compartments, [1.0]; progress=false)
     end
 end
 

@@ -87,9 +87,12 @@ geochemical reactions, by the numbers of PHREEQC definitions, e.g.
 `initial=(solution=2, equilibrium_phases=2)`; with geochemical reactions, the solution of
 the compartment reacts at every coupling step, like the pore water.
 
-The electric condition is given as for a [`Reservoir`](@ref). The electrolysis rate is
-known only under current control, so compartments require a current density applied at
-one of the boundaries; the current is then the same at both electrodes.
+The electric condition is given as for a [`Reservoir`](@ref). Under current control, the
+electrolysis rate follows from the applied current, which is the same at both electrodes.
+Under voltage control (potential fixed at both boundaries), it follows from the computed
+current between the compartment and the column, so that the compartment remains
+electroneutral; the anode is then the electrode where the current enters the column, and
+both H⁺ and OH⁻ must be species of the model.
 """
 struct Compartment <: BoundaryCondition
     concentrations::Dict{String,Float64}

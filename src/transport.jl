@@ -17,7 +17,9 @@
 #     (V/A) ∂cᵢ/∂t + Jᵢ·ν + (Q/A + q_out) cᵢ = Rᵢ / A
 # with ν the outward normal of the compartment toward the column, Q the flushing rate, q_out
 # the electroosmotic water flux into the compartment (which overflows; the compartment
-# upstream is refilled with deionised water) and Rᵢ the production by electrolysis.
+# upstream is refilled with deionised water) and Rᵢ the production by electrolysis. Under
+# current control, Rᵢ follows from the applied current; under voltage control, from the
+# current through the edge next to the compartment (see `electrode_production!`).
 # One of the following equations is solved for the potential:
 #     −∇·((ε_eff / F) ∇φ) = n Σᵢ zᵢ cᵢ          Poisson equation divided by F
 #     ∇·(Σᵢ zᵢ Jᵢ) = 0                         charge conservation divided by F
@@ -61,6 +63,10 @@ struct NPPData
     production::Matrix{Float64}     # production by electrolysis R/A (mol m⁻² s⁻¹), species × region
     keo_L::Float64                  # electroosmotic permeability / column length (m V⁻¹ s⁻¹)
     darcy::Base.RefValue{Float64}   # electroosmotic water flux q (m s⁻¹), see `update_darcy!`
+    electrode_current::Vector{Bool} # per region: production from the current of the adjacent edge
+    h_boundary::Vector{Float64}     # length of the edge next to each boundary region (m)
+    iH::Int                         # indices of H+ and OH- (0 if absent)
+    iOH::Int
 end
 
 # Water flux q from the boundary potentials of the state `u` (unknowns × nodes)
@@ -131,6 +137,60 @@ end
 
 npp_bcondition!(f, u, bnode, d::NPPData) = boundary_terms!(f, u, bnode.region, d)
 
+@doc raw"""
+    electrode_production!(f, u, data)
+
+Production of H⁺ (anode) or OH⁻ (cathode) by water electrolysis in the electrode
+compartments under voltage control, added to the residual vector `f` for the state vector
+`u`. The electrode current equals the ionic current through the edge next to the compartment
+node, ``i = F \sum_i z_i J_i``, so that the compartment remains electroneutral; it is positive
+at the anode, where it flows into the column.
+"""
+function electrode_production!(f, u, d::NPPData)
+    n = d.nspecies + 1
+    nnodes = length(u) ÷ n
+    for ireg in 1:2
+        d.electrode_current[ireg] || continue
+        k, l = ireg == 1 ? (1, 2) : (nnodes - 1, nnodes)   # edge from k to l
+        h = d.h_boundary[ireg]
+        uk(s) = u[(k - 1) * n + s]
+        ul(s) = u[(l - 1) * n + s]
+        Δψ = d.f_RT * (ul(n) - uk(n))
+        qh = d.darcy[] * h
+        current = sum(d.z[s] * sg_flux(d.Deff[s], d.z[s], uk(s), ul(s), Δψ, qh) for s in 1:(d.nspecies)) / h
+        # Current from the electrode into the column (mol m⁻² s⁻¹ of charge)
+        i = ireg == 1 ? current : -current
+        node = ireg == 1 ? k : l
+        f[(node - 1) * n + d.iH] -= max(i, zero(i))
+        f[(node - 1) * n + d.iOH] -= max(-i, zero(i))
+    end
+    return f
+end
+
+function npp_generic!(f, u, system, d::NPPData)
+    fill!(f, zero(eltype(f)))
+    return electrode_production!(f, u, d)
+end
+
+# Sparsity of `electrode_production!`: rows of H+ and OH- of the compartment node, columns of
+# all unknowns of the two nodes of the adjacent edge
+function npp_generic_sparsity(system)
+    d = system.physics.data
+    n = d.nspecies + 1
+    nnodes = VoronoiFVM.num_dof(system) ÷ n
+    rows, cols = Int[], Int[]
+    for ireg in 1:2
+        d.electrode_current[ireg] || continue
+        k, l = ireg == 1 ? (1, 2) : (nnodes - 1, nnodes)
+        node = ireg == 1 ? k : l
+        for s in (d.iH, d.iOH), j in (k, l), r in 1:n
+            push!(rows, (node - 1) * n + s)
+            push!(cols, (j - 1) * n + r)
+        end
+    end
+    return sparse(rows, cols, trues(length(rows)), n * nnodes, n * nnodes)
+end
+
 # Terms of the boundary region `ireg`. Fixed values (Dirichlet conditions) are imposed by a
 # penalty, as in VoronoiFVM.
 function boundary_terms!(f, u, ireg, d::NPPData)
@@ -179,7 +239,9 @@ density applied at the boundary (A m⁻²), as indicated by the vector `fixed_po
 
 Boundary regions with a positive `depth` (``V/A``, m) are electrode compartments, with the
 flushing rate `flushing` (``Q/A``, m s⁻¹) and the production `production` (``R/A``,
-mol m⁻² s⁻¹, species × region); their concentrations are not fixed.
+mol m⁻² s⁻¹, species × region); their concentrations are not fixed. In the regions where
+`electrode_current` is true (compartments under voltage control), the production is
+computed from the current instead (see [`electrode_production!`](@ref)).
 """
 function TransportProblem(
     grid::ExtendableGrid,
@@ -193,9 +255,11 @@ function TransportProblem(
     depth::AbstractVector=zeros(size(bvalues, 2)),
     flushing::AbstractVector=zeros(size(bvalues, 2)),
     production::AbstractMatrix=zeros(length(species), size(bvalues, 2)),
+    electrode_current::AbstractVector{Bool}=falses(size(bvalues, 2)),
 )
     nspecies = length(species)
     x = vec(grid[ExtendableGrids.Coordinates])
+    index(name) = something(findfirst(s -> s.name == name, species), 0)
     data = NPPData(
         nspecies,
         formulation_code(potential),
@@ -212,7 +276,14 @@ function TransportProblem(
         Matrix{Float64}(production),
         medium.electroosmotic_permeability / (x[end] - x[1]),
         Ref(0.0),
+        Vector{Bool}(electrode_current),
+        [x[2] - x[1], x[end] - x[end - 1]],
+        index("H+"),
+        index("OH-"),
     )
+    # The production at compartments under voltage control couples the compartment node with
+    # its neighbour; it is assembled by VoronoiFVM as a generic operator.
+    generic = any(electrode_current) ? (; generic=npp_generic!, generic_sparsity=npp_generic_sparsity) : (;)
     system = VoronoiFVM.System(
         grid;
         species=collect(1:(nspecies + 1)),
@@ -223,6 +294,7 @@ function TransportProblem(
         bstorage=npp_bstorage!,
         data=data,
         unknown_storage=:dense,
+        generic...,
     )
     return TransportProblem(system, data, Vector{Float64}(scales), x)
 end
@@ -340,6 +412,7 @@ function residual!(r, u, problem::TransportProblem, w::ResidualWorkspace)
         @views boundary_terms!(w.f, U[:, j], ireg, d)
         @views R[:, j] .+= w.f
     end
+    electrode_production!(r, u, d)
     return r
 end
 

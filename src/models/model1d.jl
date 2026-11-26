@@ -135,7 +135,7 @@ function Model1D(;
 
     electric(b) = fixed_potential(b) ? b.potential : b.current_density
     bvalues = hcat(vcat(c[:, 1], electric(left)), vcat(c[:, end], electric(right)))
-    depth, flushing, production = _compartments(species, left, right, area)
+    depth, flushing, production, electrode_current = _compartments(species, left, right, area)
     problem = TransportProblem(
         simplexgrid(x),
         species,
@@ -148,6 +148,7 @@ function Model1D(;
         depth,
         flushing,
         production,
+        electrode_current,
     )
 
     # Initial state. The potential is computed from the potential equation, starting from a
@@ -205,38 +206,43 @@ function _resolved(b::Compartment, species, c)
 end
 
 # Compartment volume and flushing rate per cross-sectional area, and production by water
-# electrolysis (species × boundary). The current density i applied at one boundary is
-# positive where it flows into the column (anode); the current is the same at the other
-# boundary (cathode).
+# electrolysis (species × boundary). Under current control, the current density i applied at
+# one boundary is positive where it flows into the column (anode); the current is the same at
+# the other boundary (cathode). Under voltage control, the production follows from the
+# computed current (`electrode_current`), and both H+ and OH- are required.
 function _compartments(species, left, right, area)
     depth, flushing, production = zeros(2), zeros(2), zeros(Base.length(species), 2)
+    electrode_current = falses(2)
     boundaries = (left, right)
-    any(b -> b isa Compartment, boundaries) || return depth, flushing, production
+    any(b -> b isa Compartment, boundaries) || return depth, flushing, production, electrode_current
     area isa Real && area > 0 ||
         throw(ArgumentError("Electrode compartments require the cross-sectional `area` of the column (m²)"))
+    function index(product)
+        j = findfirst(s -> s.name == product, species)
+        j === nothing && throw(ArgumentError("Water electrolysis in a compartment requires the species $product"))
+        return j
+    end
     applied = findfirst(b -> !fixed_potential(b), boundaries)
-    i = boundaries[applied].current_density
-    anode = i >= 0 ? applied : 3 - applied
     for (k, b) in enumerate(boundaries)
         b isa Compartment || continue
         depth[k], flushing[k] = b.volume / area, b.flow / area
-        product = k == anode ? "H+" : "OH-"
-        j = findfirst(s -> s.name == product, species)
-        j === nothing && throw(ArgumentError("Water electrolysis in a compartment requires the species $product"))
-        production[j, k] = abs(i) / FARADAY
+        if applied === nothing
+            index("H+"), index("OH-")
+            electrode_current[k] = true
+        else
+            i = boundaries[applied].current_density
+            anode = i >= 0 ? applied : 3 - applied
+            production[index(k == anode ? "H+" : "OH-"), k] = abs(i) / FARADAY
+        end
     end
-    return depth, flushing, production
+    return depth, flushing, production, electrode_current
 end
 
 function _check_electric_conditions(potential::PotentialModel, left::BoundaryCondition, right::BoundaryCondition)
     fixed_potential(left) ||
         fixed_potential(right) ||
         throw(ArgumentError("The potential must be fixed at one boundary at least"))
-    if fixed_potential(left) && fixed_potential(right)
-        any(b -> b isa Compartment, (left, right)) &&
-            throw(ArgumentError("Electrode compartments require a current density applied at one boundary"))
-        return nothing
-    end
+    fixed_potential(left) && fixed_potential(right) && return nothing
     potential isa ChargeConservation || throw(
         ArgumentError(
             "An applied current density requires the ChargeConservation formulation, not $(nameof(typeof(potential)))",
