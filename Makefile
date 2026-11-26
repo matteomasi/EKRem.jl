@@ -37,7 +37,7 @@ test-pkg:  ## Run the unit tests with Pkg.test, in an isolated test environment
 	$(JULIA) --project=. -e "using Pkg; Pkg.test()"
 
 .PHONY: examples
-examples:  ## Run all examples (figures in examples/output)
+examples:  ## Run all examples (figures in the output/ folder of each group)
 	$(DEV) examples
 
 # Documentation
