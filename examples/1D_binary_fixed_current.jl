@@ -63,6 +63,7 @@ D₊, D₋ = 1.33e-9, 2.03e-9  # diffusion coefficients of Na⁺ and Cl⁻ in wa
 
 electrolyte(c) = Dict("Na+" => c, "Cl-" => c)
 species = [Species("Na+", 1, D₊), Species("Cl-", -1, D₋)]
+#md nothing #hide
 
 # Analytical steady state
 Dp, Dm = n * τ * D₊, n * τ * D₋
