@@ -1,5 +1,5 @@
 #=
-# Migration test: Krabbenhøft and Krabbenhøft benchmark
+# Krabbenhøft and Krabbenhøft benchmark
 
 Electromigration of Na⁺, Cl⁻, K⁺ and OH⁻ under a fixed electric potential difference,
 compared with the analytical steady state of Krabbenhøft and Krabbenhøft (2008).
