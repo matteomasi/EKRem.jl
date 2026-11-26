@@ -110,3 +110,9 @@ Without a library, the PhreeqcRM tests are skipped. By default, the tests read t
 - Ogata, A., Banks, R.B., 1961. A solution of the differential equation of longitudinal dispersion in porous media. U.S. Geological Survey Professional Paper 411-A, A1–A7. https://doi.org/10.3133/pp411A
 - Rolle, M., Sprocati, R., Masi, M., Jin, B., Muniruzzaman, M., 2018. Nernst–Planck-based description of transport, Coulombic interactions, and geochemical reactions in porous media: Modeling approach and benchmark experiments. Water Resour. Res. 54, 3176–3195. https://doi.org/10.1002/2017WR022344
 - Sprocati, R., Masi, M., Muniruzzaman, M., Rolle, M., 2019. Modeling electrokinetic transport and biogeochemical reactions in porous media: A multidimensional Nernst–Planck–Poisson approach with PHREEQC coupling. Adv. Water Resour. 127, 134–147. https://doi.org/10.1016/j.advwatres.2019.03.011
+
+## License
+
+Copyright (c) 2026 Matteo Masi
+
+Licensed under the [Apache License, Version 2.0](LICENSE).
