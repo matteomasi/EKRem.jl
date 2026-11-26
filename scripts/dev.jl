@@ -63,8 +63,8 @@ function install()
 end
 
 """
-Run all examples (examples/*.jl), each in its own Julia process with the examples
-environment. The environment is resolved first, so that changes of the dependencies of
+Run all examples (the scripts in the subfolders of examples/), each in its own Julia process
+with the examples environment. The environment is resolved first, so that changes of the dependencies of
 EKRem are taken into account.
 """
 function examples()
@@ -72,7 +72,9 @@ function examples()
     Pkg.activate(dir)
     Pkg.resolve()
     Pkg.instantiate()
-    scripts = sort(filter(f -> endswith(f, ".jl"), readdir(dir)))
+    scripts = sort([
+        relpath(joinpath(root, f), dir) for (root, _, files) in walkdir(dir) for f in files if endswith(f, ".jl")
+    ])
     failed = String[]
     for script in scripts
         printstyled("\n▶ ", script, "\n"; color=:cyan, bold=true)
@@ -80,7 +82,7 @@ function examples()
         success(pipeline(cmd; stdout=stdout, stderr=stderr)) || push!(failed, script)
     end
     isempty(failed) || (println(stderr, "\nFailed examples: ", join(failed, ", ")); exit(1))
-    println("\nAll $(length(scripts)) examples completed; figures are in examples/output/.")
+    println("\nAll $(length(scripts)) examples completed; figures are in the output/ folders.")
     return nothing
 end
 

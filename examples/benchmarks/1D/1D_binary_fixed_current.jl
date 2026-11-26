@@ -42,7 +42,7 @@ column.
 The example script can be run from the repository root:
 
 ```console
-julia --project=examples examples/1D_binary_fixed_current.jl
+julia --project=examples examples/benchmarks/1D/1D_binary_fixed_current.jl
 ```
 =#
 

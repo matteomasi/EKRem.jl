@@ -1,5 +1,5 @@
 #=
-# Migration test: Krabbenhøft benchmark
+# Migration test: Krabbenhøft and Krabbenhøft benchmark
 
 Electromigration of Na⁺, Cl⁻, K⁺ and OH⁻ under a fixed electric potential difference,
 compared with the analytical steady state of Krabbenhøft and Krabbenhøft (2008).
@@ -53,7 +53,7 @@ where:
 The example script can be run from the repository root:
 
 ```console
-julia --project=examples examples/1D_benchmark_krabbenhoft.jl
+julia --project=examples examples/benchmarks/1D/1D_benchmark_krabbenhoft.jl
 ```
 =#
 

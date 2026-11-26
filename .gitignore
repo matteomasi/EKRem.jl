@@ -22,7 +22,7 @@ docs/package-lock.json
 phreeqc.log
 
 # Output of the examples (figures)
-examples/output/
+examples/**/output/
 
 # Visual Studio Code
 .vscode/

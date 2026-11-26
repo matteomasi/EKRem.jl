@@ -23,17 +23,21 @@ const ROOT = dirname(@__DIR__)
 const SRC = joinpath(@__DIR__, "src")
 
 # Example scripts → Markdown pages (lines ending with `#src` are omitted, lines starting with
-# `#md` appear only in the pages)
-examples = [
-    "1D_trace_electromigration.jl" => "Electromigration and electroosmosis of a trace ion",
-    "1D_binary_fixed_potential.jl" => "Binary electrolyte, fixed voltage",
-    "1D_binary_fixed_current.jl" => "Binary electrolyte, fixed current",
-    "1D_benchmark_krabbenhoft.jl" => "Krabbenhøft benchmark",
+# `#md` appear only in the pages), by group; the paths are relative to examples/
+example_groups = [
+    "1D benchmarks" => [
+        "benchmarks/1D/1D_trace_electromigration.jl" => "Electromigration and electroosmosis of a trace ion",
+        "benchmarks/1D/1D_binary_fixed_potential.jl" => "Binary electrolyte, fixed voltage",
+        "benchmarks/1D/1D_binary_fixed_current.jl" => "Binary electrolyte, fixed current",
+        "benchmarks/1D/1D_benchmark_krabbenhoft.jl" => "Krabbenhøft and Krabbenhøft benchmark",
+    ],
 ]
-example_pages = map(examples) do (script, title)
-    Literate.markdown(joinpath(ROOT, "examples", script), joinpath(SRC, "examples"); documenter=true, credit=false)
+function example_page(script, title)
+    dir = joinpath(SRC, "examples", dirname(script))
+    Literate.markdown(joinpath(ROOT, "examples", script), dir; documenter=true, credit=false)
     return title => joinpath("examples", replace(script, ".jl" => ".md"))
 end
+example_pages = [group => [example_page(s, t) for (s, t) in scripts] for (group, scripts) in example_groups]
 
 # Only the last line of the progress report of each run is shown in the pages
 EKRem.PROGRESS_INTERVAL[] = Inf

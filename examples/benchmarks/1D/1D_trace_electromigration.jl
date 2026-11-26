@@ -37,7 +37,7 @@ the solute is stored in the pore water. The column is long enough for the right 
 The example script can be run from the repository root:
 
 ```console
-julia --project=examples examples/1D_trace_electromigration.jl
+julia --project=examples examples/benchmarks/1D/1D_trace_electromigration.jl
 ```
 =#
 

@@ -33,7 +33,7 @@ second-order convergence of the discretisation.
 The example script can be run from the repository root:
 
 ```console
-julia --project=examples examples/1D_binary_fixed_potential.jl
+julia --project=examples examples/benchmarks/1D/1D_binary_fixed_potential.jl
 ```
 =#
 

@@ -15,7 +15,7 @@ hero:
       link: /theory
     - theme: alt
       text: Examples
-      link: /examples/1D_trace_electromigration
+      link: /examples/benchmarks/1D/1D_trace_electromigration
 
 features:
   - title: Nernst–Planck transport
@@ -58,10 +58,10 @@ a 10 cm column:
 using EKRem
 
 species = [Species("Na+", 1, 1.33e-9), Species("Cl-", -1, 2.03e-9), Species("T+", 1, 1.0e-9)]
-background = Dict("Na+" => 100.0, "Cl-" => 100.0)                 # mol/m³
+background = Dict("Na+" => 100.0, "Cl-" => 100.0) # mol/m³
 
 model = Model1D(;
-    length=0.1,                                                     # m
+    length=0.1, # m
     grid=(h_min=1.0e-5, h_max=1.0e-4, growth=1.1),
     species,
     initial=background,
@@ -70,7 +70,7 @@ model = Model1D(;
     porosity=0.4,
     tortuosity=0.5,
 )
-run!(model, [1.0e4, 1.0e5])                                         # s
+run!(model, [1.0e4, 1.0e5]) # s
 
 x = coordinates(model)
 c = concentration(model, "T+", 1.0e5)
