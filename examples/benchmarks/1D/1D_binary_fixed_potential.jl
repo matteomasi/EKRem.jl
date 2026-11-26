@@ -1,10 +1,12 @@
 #=
 # Binary electrolyte under a fixed voltage
 
-A 1 cm column of a water-saturated porous medium (porosity 0.4, tortuosity factor 0.5) lies
-between two reservoirs with NaCl at 10 mol/m³ (anolyte) and 100 mol/m³ (catholyte). The
-potential is fixed at 0.5 V at the anode and at 0 V at the cathode. The model is run until
-the steady state is reached, and the result is compared with the analytical steady state
+This example demonstrates steady-state transport in a 1 cm water-saturated porous column 
+(porosity 0.4, tortuosity factor 0.5). Both the anode and cathode reservoirs contain NaCl 
+at concentrations of 10 mol/m³ (anolyte) and 100 mol/m³ (catholyte), respectively. 
+The electric potential is fixed at 0.5 V at the anode and 0 V at the cathode. 
+The simulated steady-state concentration and electric potential profiles are 
+compared with the corresponding analytical solution.
 
 ```math
 c(x) = c_L + (c_R - c_L) \frac{x}{L}, \qquad
