@@ -49,18 +49,8 @@ where:
 - ``\alpha = k \Delta\phi / \ln(c_0 / c_L)``, with ``k = F / (R T)``;
 - the upper sign applies to cations and the lower sign to anions.
 
-## References
 
-Krabbenhøft, K., Krabbenhøft, J., 2008. Application of the Poisson–Nernst–Planck equations
-to the migration test. Cem. Concr. Res. 38, 77–88.
-https://doi.org/10.1016/j.cemconres.2007.08.006
-
-Sprocati, R., Masi, M., Muniruzzaman, M., Rolle, M., 2019. Modeling electrokinetic transport
-and biogeochemical reactions in porous media: A multidimensional Nernst–Planck–Poisson
-approach with PHREEQC coupling. Adv. Water Resour. 127, 134–147.
-https://doi.org/10.1016/j.advwatres.2019.03.011
-
-Run from the repository root:
+The example script can be run from the repository root:
 
 ```console
 julia --project=examples examples/1D_benchmark_krabbenhoft.jl
@@ -193,3 +183,16 @@ figure = plot(panels...; layout=@layout([a b; c d; e _]), size=(1000, 1200), mar
 savefig(figure, joinpath(output, "1D_benchmark_krabbenhoft.png")) #src
 println("Figure saved in ", joinpath(output, "1D_benchmark_krabbenhoft.png")) #src
 #md figure
+
+#=
+## References
+
+Krabbenhøft, K., Krabbenhøft, J., 2008. Application of the Poisson–Nernst–Planck equations
+to the migration test. Cem. Concr. Res. 38, 77–88.
+https://doi.org/10.1016/j.cemconres.2007.08.006
+
+Sprocati, R., Masi, M., Muniruzzaman, M., Rolle, M., 2019. Modeling electrokinetic transport
+and biogeochemical reactions in porous media: A multidimensional Nernst–Planck–Poisson
+approach with PHREEQC coupling. Adv. Water Resour. 127, 134–147.
+https://doi.org/10.1016/j.advwatres.2019.03.011
+=#

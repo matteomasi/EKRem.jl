@@ -32,21 +32,9 @@ c(x, t) = \frac{c_{in}}{2} \left[ \operatorname{erfc}\left( \frac{x - k_v t}{2 \
 ```
 
 evaluated at the time ``t/n``, because ``D^*`` and ``k_v`` refer to the bulk medium, whereas
-the solute is stored in the pore water.
+the solute is stored in the pore water. The column is long enough for the right boundary to have no influence at the output times.
 
-The column is long enough for the right boundary to have no influence at the output times.
-
-## References
-
-Acar, Y.B., Gale, R.J., Putnam, G.A., Hamed, J., Wong, R.L., 1990. Electrochemical processing
-of soils: theory of pH gradient development by diffusion, migration, and linear convection.
-J. Environ. Sci. Health A 25(6), 687–714. https://doi.org/10.1080/10934529009375590
-
-Ogata, A., Banks, R.B., 1961. A solution of the differential equation of longitudinal
-dispersion in porous media. U.S. Geological Survey Professional Paper 411-A, A1–A7.
-https://doi.org/10.3133/pp411A
-
-Run from the repository root:
+The example script can be run from the repository root:
 
 ```console
 julia --project=examples examples/1D_trace_electromigration.jl
@@ -150,3 +138,15 @@ figure = plot(p1, p2; layout=(1, 2), size=(1000, 400), margin=5Plots.mm)
 savefig(figure, joinpath(output, "1D_trace_electromigration.png")) #src
 println("\nFigure saved in ", joinpath(output, "1D_trace_electromigration.png")) #src
 #md figure
+
+#=
+## References
+
+Acar, Y.B., Gale, R.J., Putnam, G.A., Hamed, J., Wong, R.L., 1990. Electrochemical processing
+of soils: theory of pH gradient development by diffusion, migration, and linear convection.
+J. Environ. Sci. Health A 25(6), 687–714. https://doi.org/10.1080/10934529009375590
+
+Ogata, A., Banks, R.B., 1961. A solution of the differential equation of longitudinal
+dispersion in porous media. U.S. Geological Survey Professional Paper 411-A, A1–A7.
+https://doi.org/10.3133/pp411A
+=#

@@ -30,7 +30,7 @@ the constants ``J_i / D_i``, so the steady state depends neither on them nor on 
 and the tortuosity factor. The comparison is repeated on three grids to show the
 second-order convergence of the discretisation.
 
-Run from the repository root:
+The example script can be run from the repository root:
 
 ```console
 julia --project=examples examples/1D_binary_fixed_potential.jl

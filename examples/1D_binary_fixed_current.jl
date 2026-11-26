@@ -39,7 +39,7 @@ Unlike the steady state under a fixed voltage, this solution depends on the diff
 coefficients, the porosity and the tortuosity factor, through the conductivity of the
 column.
 
-Run from the repository root:
+The example script can be run from the repository root:
 
 ```console
 julia --project=examples examples/1D_binary_fixed_current.jl
