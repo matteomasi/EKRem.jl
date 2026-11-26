@@ -26,17 +26,16 @@ const RERUN = "rerun" in ARGS
 const ROOT = dirname(@__DIR__)
 const SRC = joinpath(@__DIR__, "src")
 
-# Example scripts → Markdown pages (lines ending with `#src` are omitted, lines starting with
-# `#md` appear only in the pages), by group; the paths are relative to examples/
+# Example scripts by group; the paths are relative to examples/
 example_groups = [
     "1D benchmarks" => [
-        "benchmarks/1D/1D_trace_electromigration.jl" => "Electromigration and electroosmosis of a trace ion",
+        "benchmarks/1D/1D_trace_electromigration.jl" => "Electromigration and electroosmosis of a trace cation",
         "benchmarks/1D/1D_binary_fixed_potential.jl" => "Binary electrolyte, fixed voltage",
         "benchmarks/1D/1D_binary_fixed_current.jl" => "Binary electrolyte, fixed current",
         "benchmarks/1D/1D_benchmark_krabbenhoft.jl" => "Krabbenhøft and Krabbenhøft benchmark",
         "benchmarks/1D/1D_benchmark_phreeqc.jl" => "PHREEQC Ampere benchmark",
     ],
-    "Examples" => ["misc/1D_compartments_fixed_voltage.jl" => "Electrode compartments under a fixed voltage"],
+    "Other examples" => ["misc/1D_compartments_fixed_voltage.jl" => "1D setup with electrode compartments and controlled voltage"],
 ]
 
 # Fingerprint of an example: the script, the files in the data/ folder next to it, the source
@@ -53,6 +52,25 @@ end
 # Only the last line of the progress report of each run is shown in the pages
 EKRem.PROGRESS_INTERVAL[] = Inf
 
+# The code between the lines `#hide-begin` and `#hide-end` of an example is run, but it is not
+# shown in the page: its lines are marked with #hide, its comments become code comments, and
+# its empty lines are removed. Lines marked with #src are left unchanged.
+function hide_regions(content)
+    lines = String[]
+    hidden = false
+    for line in split(replace(content, "\r\n" => "\n"), '\n')
+        s = strip(line)
+        if s == "#hide-begin" || s == "#hide-end"
+            hidden = s == "#hide-begin"
+        elseif !hidden || endswith(s, "#src")
+            push!(lines, line)
+        elseif !isempty(s)
+            push!(lines, (startswith(s, "#") ? "#" : "") * line * " #hide")
+        end
+    end
+    return join(lines, '\n')
+end
+
 function example_page(script, title)
     path = joinpath(ROOT, "examples", script)
     dir = joinpath(SRC, "examples", dirname(script))
@@ -61,7 +79,7 @@ function example_page(script, title)
     key = fingerprint(path)
     if RERUN || !isfile(page) || !isfile(stamp) || read(stamp, String) != key
         @info "Running example $script"
-        Literate.markdown(path, dir; documenter=true, execute=true, credit=false)
+        Literate.markdown(path, dir; documenter=true, execute=true, credit=false, preprocess=hide_regions)
         write(stamp, key)
     else
         @info "Example $script unchanged: not run again"
