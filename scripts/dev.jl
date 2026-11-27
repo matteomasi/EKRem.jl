@@ -54,6 +54,7 @@ end
 function install()
     Pkg.activate(DEV_ENV; shared=true)
     Pkg.add(DEV_TOOLS)
+    Pkg.instantiate()   # downloads packages recorded in the manifest but missing from the depot
     for project in (ROOT, joinpath(ROOT, "examples"), joinpath(ROOT, "docs"))
         Pkg.activate(project)
         Pkg.instantiate()

@@ -35,8 +35,7 @@ version 1.0.0, a minor version may contain breaking changes.
 - Benchmarks against analytical solutions (Ogata–Banks; Krabbenhøft and Krabbenhøft, 2008)
   and against the Nernst–Planck module of PHREEQC, and an example with electrode
   compartments.
-- Documentation built with Documenter.jl and DocumenterVitepress.jl, with the examples
-  rendered by Literate.jl.
+- Documentation built with Documenter.jl, with the examples rendered by Literate.jl.
 - Continuous integration of the tests on Linux, Windows and macOS, with PhreeqcRM built from
   its source distribution.
 

@@ -7,7 +7,7 @@ porous medium. PhreeqcRM computes the surface complexation and the aqueous speci
 case is based on the benchmark of Sprocati et al. (2019), with different parameter values.
 It is solved here in one dimension, and the results are compared with those of the 
 Nernst–Planck module of PHREEQC version "Ampere" (Appelo, 2017), which can be found at:
-https://www.hydrochemistry.eu/exmpls/electro_dif.html.
+[https://www.hydrochemistry.eu/exmpls/electro_dif.html](https://www.hydrochemistry.eu/exmpls/electro_dif.html).
 
 ## Setup
 
@@ -237,10 +237,10 @@ println("Figure saved in ", joinpath(output, "1D_benchmark_phreeqc.png")) #src
 ## References
 Appelo, C.A.J., 2017. Solute transport solved with the Nernst–Planck equation for concrete 
 pores with ‘free’ water and a double layer. Cem. Concr. Res. 101, 102–113. 
-https://doi.org/10.1016/J.CEMCONRES.2017.08.030 .
+[https://doi.org/10.1016/j.cemconres.2017.08.030](https://doi.org/10.1016/j.cemconres.2017.08.030)
 
 Sprocati, R., Masi, M., Muniruzzaman, M., Rolle, M., 2019. Modeling electrokinetic transport
 and biogeochemical reactions in porous media: A multidimensional Nernst–Planck–Poisson
 approach with PHREEQC coupling. Adv. Water Resour. 127, 134–147.
-https://doi.org/10.1016/j.advwatres.2019.03.011
+[https://doi.org/10.1016/j.advwatres.2019.03.011](https://doi.org/10.1016/j.advwatres.2019.03.011)
 =#

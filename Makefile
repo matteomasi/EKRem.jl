@@ -42,7 +42,7 @@ examples:  ## Run all examples (figures in the output/ folder of each group)
 
 # Documentation
 .PHONY: docs
-docs:  ## Build the documentation (site in docs/build/1)
+docs:  ## Build the documentation (site in docs/build)
 	$(JULIA) --project=docs docs/make.jl
 
 .PHONY: docs-rerun
@@ -50,7 +50,7 @@ docs-rerun:  ## Build the documentation, running all examples again
 	$(JULIA) --project=docs docs/make.jl rerun
 
 .PHONY: docs-serve
-docs-serve:  ## Build the documentation and serve it locally with live reload
+docs-serve:  ## Serve the documentation locally (LiveServer.jl), rebuilt when a page or an example changes
 	$(JULIA) --project=docs docs/make.jl serve
 
 .PHONY: coverage

@@ -144,9 +144,10 @@ println("\nFigure saved in ", joinpath(output, "1D_trace_electromigration.png"))
 
 Acar, Y.B., Gale, R.J., Putnam, G.A., Hamed, J., Wong, R.L., 1990. Electrochemical processing
 of soils: theory of pH gradient development by diffusion, migration, and linear convection.
-J. Environ. Sci. Health A 25(6), 687–714. https://doi.org/10.1080/10934529009375590
+J. Environ. Sci. Health A 25(6), 687–714. 
+[https://doi.org/10.1080/10934529009375590](https://doi.org/10.1080/10934529009375590)
 
 Ogata, A., Banks, R.B., 1961. A solution of the differential equation of longitudinal
 dispersion in porous media. U.S. Geological Survey Professional Paper 411-A, A1–A7.
-https://doi.org/10.3133/pp411A
+[https://doi.org/10.3133/pp411A](https://doi.org/10.3133/pp411A)
 =#
