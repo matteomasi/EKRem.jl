@@ -108,7 +108,7 @@ makedocs(;
             "Geochemical reactions" => "guide/reactions.md",
             "Simulation and results" => "guide/simulation.md",
         ],
-        "Examples" => example_pages,
+        "Examples" => ["Overview" => "examples.md"; example_pages],
         "API reference" => [
             "Models" => "reference/models.md",
             "Species and porous medium" => "reference/medium.md",
