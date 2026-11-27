@@ -1,27 +1,33 @@
 # Theory
 
-This page summarises the equations solved by EKRem and their numerical solution. The
-porous medium is water-saturated, isothermal and rigid. The only water flow is
-electroosmotic; hydraulic gradients are not considered.
+This page provides a theoretical overview of electrokinetic remediation and
+summarises the equations solved by EKRem and the methods used for their numerical integration.
+
+## Electrokinetic remediation
+
+Electrokinetic remediation (EKR) is a technique that uses a low-intensity electric field to mobilize and remove contaminants from porous media and/or to enhance the delivery of amendments (Reddy and Cameselle, 2009). EKR has been successfully employed for the treatment of soils, sediments and groundwater contaminated by a wide variety of pollutants such as heavy metals, organic compounds, and radionuclides.
+Compared to other technologies, this technique has shown particularly good potential in the remediation of polluted material under complex conditions, e.g., characterised by low-permeability or high heterogeneity.
+
+The electric field is applied across the porous medium using electrodes, inducing the three main 
+transport mechanisms: 
+- Electroosmosis: the movement of pore water relative to the solid matrix.
+- Electromigration: the transport of charged species.
+- Electrophoresis: the movement of charged particles.
+
+The application of an electric field also induces electrolysis reactions in proximity of the electrodes. These reactions generate an acidic front at the anode and an alkaline front at the cathode, which can have a strong impact on the system geochemistry, and can favour or prevent chemical reactions such as mineral precipitation and dissolution.
+
 
 ## [Transport](@id transport)
 
-The unknowns are the pore-water concentrations ``c_i`` (mol m⁻³) of the ``N`` transported
-aqueous species and the electric potential ``\phi`` (V). The mass balance of each species,
-per unit bulk volume of the porous medium, is
+Diffusion, electromigration and electroosmosis are considered as the main transport mechanisms. Electrophoretic transport was not accounted for, due to its limited relevance in electrokinetic remediation since colloid migration is hindered by the immobile phase of the porous medium.
 
-```math
-n \frac{\partial c_i}{\partial t} + \nabla \cdot \mathbf{J}_i = 0, \qquad i = 1, \dots, N,
-```
-
-with the Nernst–Planck flux (per unit bulk area)
+The ion flux density per unit bulk area of porous medium ``\mathbf{J}_i`` (mol m⁻² s⁻¹) of a dissolved chemical species ``i`` can be described by the Nernst–Planck equation (Alshawabkeh and Acar, 1992):
 
 ```math
 \mathbf{J}_i = -D_i^* \left( \nabla c_i + z_i c_i \nabla \psi \right) + \mathbf{q} c_i,
 \qquad \psi = \frac{F \phi}{R T},
 \qquad D_i^* = n \tau D_i,
 ```
-
 where ``n`` is the porosity, ``\tau`` the tortuosity factor (``0 < \tau \le 1``), ``D_i``
 the diffusion coefficient in free water, ``z_i`` the charge number, ``F`` the Faraday
 constant, ``R`` the gas constant and ``T`` the temperature. The terms of the flux describe
@@ -34,6 +40,14 @@ these equations; they are computed separately (see
     The tortuosity factor multiplies the diffusion coefficient. Where the effective diffusion
     coefficient is defined as ``n D_i / \tau'`` with a tortuosity ``\tau' \ge 1``, the
     corresponding factor is ``\tau = 1 / \tau'``.
+
+The pore-water concentrations ``c_i`` (mol m⁻³) of the ``N`` transported
+aqueous species and the electric potential ``\phi`` (V) are the primary unknowns. 
+The mass balance of each species, per unit bulk volume of the porous medium, is
+
+```math
+n \frac{\partial c_i}{\partial t} + \nabla \cdot \mathbf{J}_i = 0, \qquad i = 1, \dots, N,
+```
 
 ## [Electric potential](@id electric-potential)
 
@@ -48,7 +62,7 @@ the potential:
 \qquad \varepsilon_\mathrm{eff} = n \varepsilon_0 \varepsilon_r .
 ```
 
-Charge separation is confined to layers whose thickness is of the order of the Debye length
+Charge separation is confined to layers whose thickness is of the order of the Debye length:
 
 ```math
 \lambda_D = \sqrt{\frac{\varepsilon_0 \varepsilon_r R T}{F^2 \sum_i z_i^2 c_i}},
@@ -110,13 +124,13 @@ where ``k_{eo}`` (m² V⁻¹ s⁻¹) is the electroosmotic permeability of the m
 ([`PorousMedium`](@ref)). By the Helmholtz–Smoluchowski equation with the porosity and
 tortuosity terms introduced by Casagrande, ``k_{eo} = -\varepsilon \zeta n \tau / \mu``,
 where ``\zeta`` is the zeta potential of the solid and ``\mu`` the viscosity of water (Masi
-et al., 2017, Eq. 6). For the negative zeta potential of most soils, ``k_{eo} > 0`` and water
+et al., 2017). For the negative zeta potential of most soils, ``k_{eo} > 0`` and water
 flows from the anode to the cathode.
 
 In one dimension, the conservation of the water volume requires a uniform flux. Where the
 field varies along the column, a pressure gradient develops; with equal hydraulic heads at
 both ends, the flux is the mean of ``-k_{eo} \partial\phi/\partial x`` over the column
-(Masi et al., 2017, Eq. 8):
+(Masi et al., 2017):
 
 ```math
 q = \frac{k_{eo}}{L} \left[ \phi(0) - \phi(L) \right].
@@ -218,6 +232,10 @@ the amounts of the components are conserved by the transfer.
 
 ## References
 
-Masi, M., Ceccarini, A., Iannelli, R., 2017. Multispecies reactive transport modelling of
-electrokinetic remediation of harbour sediments. J. Hazard. Mater. 326, 187–196.
-https://doi.org/10.1016/j.jhazmat.2016.12.032
+- Appelo, C.A.J., 2017. Solute transport solved with the Nernst–Planck equation for concrete pores with ‘free’ water and a double layer. Cem. Concr. Res. 101, 102–113. https://doi.org/10.1016/j.cemconres.2017.08.030
+- Krabbenhøft, K., Krabbenhøft, J., 2008. Application of the Poisson–Nernst–Planck equations to the migration test. Cem. Concr. Res. 38, 77–88. https://doi.org/10.1016/j.cemconres.2007.08.006
+- Masi, M., Ceccarini, A., Iannelli, R., 2017. Multispecies reactive transport modelling of electrokinetic remediation of harbour sediments. J. Hazard. Mater. 326, 187–196. https://doi.org/10.1016/j.jhazmat.2016.12.032
+- Masi, M., Paz-Garcia, J.M., Gomez-Lahoz, C., Villen-Guzman, M., Ceccarini, A., Iannelli, R., 2019. Modeling of electrokinetic remediation combining local chemical equilibrium and chemical reaction kinetics. J. Hazard. Mater. 371, 728–733. https://doi.org/10.1016/j.jhazmat.2019.03.014
+- Ogata, A., Banks, R.B., 1961. A solution of the differential equation of longitudinal dispersion in porous media. U.S. Geological Survey Professional Paper 411-A, A1–A7. https://doi.org/10.3133/pp411A
+- Rolle, M., Sprocati, R., Masi, M., Jin, B., Muniruzzaman, M., 2018. Nernst–Planck-based description of transport, Coulombic interactions, and geochemical reactions in porous media: Modeling approach and benchmark experiments. Water Resour. Res. 54, 3176–3195. https://doi.org/10.1002/2017WR022344
+- Sprocati, R., Masi, M., Muniruzzaman, M., Rolle, M., 2019. Modeling electrokinetic transport and biogeochemical reactions in porous media: A multidimensional Nernst–Planck–Poisson approach with PHREEQC coupling. Adv. Water Resour. 127, 134–147. https://doi.org/10.1016/j.advwatres.2019.03.011
