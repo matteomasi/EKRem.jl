@@ -1,4 +1,4 @@
-# Development tasks of EKRem, called by the Makefile:
+# Development tasks of SimEK, called by the Makefile:
 #
 #     julia --project=. scripts/dev.jl <task> [argument]
 #
@@ -6,13 +6,13 @@
 #        bump <patch|minor|major>, clean.
 #
 # The development tools (Aqua, Coverage, JuliaFormatter) are installed by `install` in the
-# shared Julia environment `ekrem-dev`, which is added to the load path when a task needs
-# them. They are therefore not dependencies of EKRem.
+# shared Julia environment `simek-dev`, which is added to the load path when a task needs
+# them. They are therefore not dependencies of SimEK.
 
 using Pkg
 
 const ROOT = dirname(@__DIR__)
-const DEV_ENV = "ekrem-dev"
+const DEV_ENV = "simek-dev"
 const DEV_TOOLS = ["Aqua", "Coverage", "JuliaFormatter"]
 const CODE_DIRS = ["src", "test", "scripts", "examples"]
 
@@ -23,7 +23,7 @@ const TASK_ARG = length(ARGS) >= 2 ? ARGS[2] : ""
 if TASK in ("lint", "coverage", "format", "format-check")
     push!(LOAD_PATH, "@" * DEV_ENV)
     try
-        TASK == "lint" && @eval using Aqua, EKRem
+        TASK == "lint" && @eval using Aqua, SimEK
         TASK == "coverage" && @eval using Coverage
         TASK in ("format", "format-check") && @eval using JuliaFormatter
     catch err
@@ -37,7 +37,7 @@ code_dirs() = [joinpath(ROOT, d) for d in CODE_DIRS if isdir(joinpath(ROOT, d))]
 
 "Print the Makefile targets that carry a `## description` comment."
 function help()
-    println("EKRem Development Commands:\n")
+    println("SimEK Development Commands:\n")
     targets = Tuple{String,String}[]
     for line in eachline(joinpath(ROOT, "Makefile"))
         m = match(r"^([a-zA-Z_-]+):.*?## (.*)$", line)
@@ -65,7 +65,7 @@ end
 """
 Run all examples (the scripts in the subfolders of examples/), each in its own Julia process
 with the examples environment. The environment is resolved first, so that changes of the dependencies of
-EKRem are taken into account.
+SimEK are taken into account.
 """
 function examples()
     dir = joinpath(ROOT, "examples")
@@ -88,7 +88,7 @@ end
 
 "Run the tests with coverage tracking, print the coverage of src/ and write lcov.info."
 function coverage()
-    Pkg.test("EKRem"; coverage=true)
+    Pkg.test("SimEK"; coverage=true)
     files = Coverage.process_folder(joinpath(ROOT, "src"))
     println("\nLine coverage of src/:")
     for fc in sort(files; by=f -> f.filename)
@@ -124,7 +124,7 @@ end
 
 "Check the package quality with Aqua.jl (ambiguities, exports, dependencies, compat, piracy)."
 function lint()
-    Aqua.test_all(EKRem)
+    Aqua.test_all(SimEK)
     return nothing
 end
 

@@ -1,6 +1,6 @@
 using Test
 
-@testset "EKRem" begin
+@testset "SimEK" begin
     include("test_constants.jl")
     include("test_electrolyte.jl")
     include("test_fluxes.jl")

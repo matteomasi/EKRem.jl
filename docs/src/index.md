@@ -3,7 +3,7 @@
 layout: home
 
 hero:
-  name: "EKRem.jl"
+  name: "SimEK.jl"
   text: "Electrokinetic remediation"
   tagline: Multicomponent ion transport in porous media under an electric field, coupled with geochemical reactions
   actions:
@@ -37,9 +37,9 @@ features:
 <div class="vp-doc" style="width:80%; margin:auto">
 ```
 
-## What is EKRem?
+## What is SimEK?
 
-EKRem is a Julia package for the simulation and design of electrokinetic remediation
+SimEK is a Julia package for the simulation and design of electrokinetic remediation
 systems. Multicomponent transport is described by the Nernst–Planck equations, the electric
 potential by the Poisson or the charge-conservation equation, and geochemical reactions are
 computed by [PhreeqcRM](https://github.com/phreeqc-dev/phreeqcrm). The transport equations
@@ -55,7 +55,7 @@ Electromigration of a trace cation through a NaCl solution under an applied volt
 a 10 cm column:
 
 ```julia
-using EKRem
+using SimEK
 
 species = [Species("Na+", 1, 1.33e-9), Species("Cl-", -1, 2.03e-9), Species("T+", 1, 1.0e-9)]
 background = Dict("Na+" => 100.0, "Cl-" => 100.0) # mol/m³

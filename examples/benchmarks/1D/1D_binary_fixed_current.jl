@@ -46,7 +46,7 @@ julia --project=examples examples/benchmarks/1D/1D_binary_fixed_current.jl
 ```
 =#
 
-using EKRem
+using SimEK
 using Plots
 using Printf
 default(; guidefontsize=13, tickfontsize=11, legendfontsize=10)   # titles: default size
@@ -113,14 +113,14 @@ xf = range(0, L; length=400)
 marks = 1:10:length(x)
 p1 = plot(; title="Concentration (steady state)", xlabel="x (mm)", ylabel="c (mol/m³)", legend=:topleft)
 scatter!(
-    p1, x[marks] .* 1e3, concentration(model, "Na+", t_end)[marks]; label="EKRem", markercolor=:black, markersize=6
+    p1, x[marks] .* 1e3, concentration(model, "Na+", t_end)[marks]; label="SimEK", markercolor=:black, markersize=6
 )
 plot!(p1, xf .* 1e3, c_exact.(xf); color=:black, label="analytical")
 p2 = plot(; title="Electric potential (steady state)", xlabel="x (mm)", ylabel="φ (V)", legend=:topright)
-scatter!(p2, x[marks] .* 1e3, electric_potential(model, t_end)[marks]; label="EKRem", markercolor=:black, markersize=6)
+scatter!(p2, x[marks] .* 1e3, electric_potential(model, t_end)[marks]; label="SimEK", markercolor=:black, markersize=6)
 plot!(p2, xf .* 1e3, φ_exact.(xf); color=:black, label="analytical")
 p3 = plot(; title="Potential at the anode", xlabel="t (s)", ylabel="φ (V)", xscale=:log10, legend=:topright)
-scatter!(p3, output_times(model)[2:end], φ_an[2:end]; label="EKRem", markercolor=:black, markersize=6)
+scatter!(p3, output_times(model)[2:end], φ_an[2:end]; label="SimEK", markercolor=:black, markersize=6)
 hline!(p3, [φ_exact(0.0)]; color=:black, label="analytical (steady state)")
 figure = plot(p1, p2, p3; layout=@layout([a b; c _]), size=(1000, 800), margin=5Plots.mm)
 savefig(figure, joinpath(output, "1D_binary_fixed_current.png")) #src

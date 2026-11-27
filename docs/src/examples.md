@@ -1,12 +1,12 @@
 # Examples
 
 Complete simulations are provided in the
-[`examples`](https://github.com/matteomasi/EKRem/tree/main/examples) folder of the repository. 
-They are organised into two groups: benchmarks, which validate EKRem by comparing its numerical results with analytical solutions or those obtained using other codes, and examples, which demonstrate the application of EKRem for typical electrokinetic systems.
+[`examples`](https://github.com/matteomasi/SimEK.jl/tree/main/examples) folder of the repository. 
+They are organised into two groups: benchmarks, which validate SimEK by comparing its numerical results with analytical solutions or those obtained using other codes, and examples, which demonstrate the application of SimEK for typical electrokinetic systems.
 
 ## Benchmarks
 
-The benchmarks (`examples/benchmarks/1D/`) compare the results of EKRem with analytical
+The benchmarks (`examples/benchmarks/1D/`) compare the results of SimEK with analytical
 solutions or with PHREEQC.
 
 - [Electromigration and electroosmosis of a trace cation](examples/benchmarks/1D/1D_trace_electromigration.md)

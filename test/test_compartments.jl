@@ -2,7 +2,7 @@
 # geochemical reactions.
 
 using Test
-using EKRem
+using SimEK
 
 const WATER_SPECIES = [
     Species("Na+", 1, 1.33e-9), Species("Cl-", -1, 2.03e-9), Species("H+", 1, 9.31e-9), Species("OH-", -1, 5.27e-9)
@@ -148,7 +148,7 @@ const WATER_SPECIES = [
         @test_skip false
     else
         @testset "Compartments with geochemical reactions" begin
-            database = get(ENV, "EKREM_PHREEQC_DATABASE", joinpath(dirname(dirname(lib)), "database", "phreeqc.dat"))
+            database = get(ENV, "SIMEK_PHREEQC_DATABASE", joinpath(dirname(dirname(lib)), "database", "phreeqc.dat"))
             # Calcite in the column; the catholyte (NaNO3) is kept at pH 3 by addition of HNO3.
             # Without nitrate in the solution, PHREEQC does not converge on the amount of HNO3.
             input = """

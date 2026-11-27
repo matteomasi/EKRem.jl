@@ -1,5 +1,5 @@
 using Test
-using EKRem
+using SimEK
 
 @testset "Grids refined toward both ends" begin
     L = 0.01

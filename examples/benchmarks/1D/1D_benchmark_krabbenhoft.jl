@@ -57,7 +57,7 @@ julia --project=examples examples/benchmarks/1D/1D_benchmark_krabbenhoft.jl
 ```
 =#
 
-using EKRem
+using SimEK
 using Plots
 using Printf
 default(; guidefontsize=13, tickfontsize=11, legendfontsize=10)   # titles: default size
@@ -158,7 +158,7 @@ function profile_panel(exact, numerical, title, ylabel; legend=false)
             p,
             x[marks] .* 1e3,
             numerical(t)[marks];
-            label="EKRem, t = $(t / hour) h",
+            label="SimEK, t = $(t / hour) h",
             markercolor=t == t_end ? :black : colors[j],
             markerstrokewidth=0,
             markersize=3.5,

@@ -1,13 +1,15 @@
 """
-    EKRem
+    SimEK
 
-Simulation of electrokinetic remediation. Multicomponent transport is described by the
-Nernst–Planck equations, the electric potential by the Poisson or the charge-conservation
-equation, and geochemical reactions are computed by PhreeqcRM ([`Chemistry`](@ref)).
+SimEK is a Julia package for the simulation of electrokinetic (EK) transport and reaction
+processes in porous media. In SimEK, multicomponent electrokinetic transport is described by
+the Nernst–Planck equations, the electric potential by either the Poisson or the
+charge-conservation equation, and geochemical reactions are computed by PhreeqcRM
+([`Chemistry`](@ref)).
 
 Models are organised by spatial dimension (`Model1D`, `Model2D`, `Model3D`).
 """
-module EKRem
+module SimEK
 
 using ExtendableGrids: ExtendableGrids, ExtendableGrid, simplexgrid
 using LinearSolve: UMFPACKFactorization
@@ -111,4 +113,4 @@ export react!, selected_output
     end
 end
 
-end # module EKRem
+end # module SimEK

@@ -6,33 +6,33 @@ change without notice.
 ## Transport problem
 
 ```@docs
-EKRem.TransportProblem
-EKRem.NPPData
-EKRem.solve_transport
-EKRem.solve_potential
-EKRem.solve_potential!
-EKRem.ode_function
-EKRem.residual!
-EKRem.update_darcy!
-EKRem.electrode_production!
-EKRem.SOLVERS
-EKRem.PROGRESS_INTERVAL
+SimEK.TransportProblem
+SimEK.NPPData
+SimEK.solve_transport
+SimEK.solve_potential
+SimEK.solve_potential!
+SimEK.ode_function
+SimEK.residual!
+SimEK.update_darcy!
+SimEK.electrode_production!
+SimEK.SOLVERS
+SimEK.PROGRESS_INTERVAL
 ```
 
 ## Species and medium
 
 ```@docs
-EKRem.concentration_vector
-EKRem.charge_imbalance
-EKRem.effective_diffusion
-EKRem.effective_permittivity
+SimEK.concentration_vector
+SimEK.charge_imbalance
+SimEK.effective_diffusion
+SimEK.effective_permittivity
 ```
 
 ## Boundaries and coupling
 
 ```@docs
-EKRem.fixed_potential
-EKRem.Coupling
-EKRem.transported_species
-EKRem.react_nodes!
+SimEK.fixed_potential
+SimEK.Coupling
+SimEK.transported_species
+SimEK.react_nodes!
 ```

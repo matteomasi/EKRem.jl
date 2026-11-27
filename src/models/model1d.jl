@@ -338,7 +338,7 @@ largest concentration of each species.
 
 `progress=true` shows the simulated percentage and the elapsed time during the run. The
 display is updated every 0.5 s by default; the interval is changed with, e.g.,
-`EKRem.PROGRESS_INTERVAL[] = 5.0`.
+`SimEK.PROGRESS_INTERVAL[] = 5.0`.
 
 `solver` selects the time integration method (both from OrdinaryDiffEq.jl, with error
 control):

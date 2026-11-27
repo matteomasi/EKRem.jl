@@ -1,7 +1,7 @@
-# Documentation of EKRem: Documenter.jl with the VitePress backend (DocumenterVitepress.jl).
+# Documentation of SimEK: Documenter.jl with the VitePress backend (DocumenterVitepress.jl).
 # The example scripts are converted to documentation pages by Literate.jl, which runs them
 # and writes their output and figures into the pages. A script is run again only when it,
-# the data in its folder or the source code of EKRem have changed since the last build.
+# the data in its folder or the source code of SimEK have changed since the last build.
 #
 # Usage (from the repository root):
 #     julia --project=docs docs/make.jl          # static site in docs/build/1
@@ -17,7 +17,7 @@ ENV["GKSwstype"] = "100"   # GR (Plots) without a display window
 
 using Documenter
 using DocumenterVitepress
-using EKRem
+using SimEK
 using Literate
 using SHA
 
@@ -39,7 +39,7 @@ example_groups = [
 ]
 
 # Fingerprint of an example: the script, the files in the data/ folder next to it, the source
-# code and the dependencies of EKRem
+# code and the dependencies of SimEK
 function fingerprint(script)
     data = joinpath(dirname(script), "data")
     files = [script; isdir(data) ? readdir(data; join=true) : String[]; joinpath(ROOT, "Project.toml")]
@@ -50,7 +50,7 @@ function fingerprint(script)
 end
 
 # Only the last line of the progress report of each run is shown in the pages
-EKRem.PROGRESS_INTERVAL[] = Inf
+SimEK.PROGRESS_INTERVAL[] = Inf
 
 # The code between the lines `#hide-begin` and `#hide-end` of an example is run, but it is not
 # shown in the page: its lines are marked with #hide, its comments become code comments, and
@@ -89,11 +89,11 @@ end
 example_pages = [group => [example_page(s, t) for (s, t) in scripts] for (group, scripts) in example_groups]
 
 makedocs(;
-    modules=[EKRem],
-    sitename="EKRem.jl",
+    modules=[SimEK],
+    sitename="SimEK.jl",
     authors="Matteo Masi",
     format=DocumenterVitepress.MarkdownVitepress(;
-        repo="github.com/matteomasi/EKRem",
+        repo="github.com/matteomasi/SimEK.jl",
         devbranch="main",
         devurl="dev",
         description="Simulation of electrokinetic remediation in Julia",

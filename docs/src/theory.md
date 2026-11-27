@@ -1,7 +1,7 @@
 # Theory
 
 This page provides a theoretical overview of electrokinetic remediation and
-summarises the equations solved by EKRem and the methods used for their numerical integration.
+summarises the equations solved by SimEK and the methods used for their numerical integration.
 
 ## Electrokinetic remediation
 

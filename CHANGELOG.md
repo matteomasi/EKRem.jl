@@ -1,12 +1,18 @@
 # Changelog
 
-All notable changes to EKRem are documented in this file.
+All notable changes to SimEK are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before
 version 1.0.0, a minor version may contain breaking changes.
 
 ## [Unreleased]
+
+### Changed
+
+- The package has been renamed from EKRem to SimEK. The environment variables are now
+  `SIMEK_PHREEQCRM` and `SIMEK_PHREEQC_DATABASE`, and the saved preference is read from
+  the `[SimEK]` section of `LocalPreferences.toml`.
 
 ### Added
 
@@ -23,7 +29,7 @@ version 1.0.0, a minor version may contain breaking changes.
   under current or voltage control.
 - Electroosmosis described by a uniform electroosmotic permeability.
 - Interface to the C API of PhreeqcRM, with the path of the shared library set by
-  `set_phreeqcrm_library`, by the environment variable `EKREM_PHREEQCRM` or by a saved
+  `set_phreeqcrm_library`, by the environment variable `SIMEK_PHREEQCRM` or by a saved
   preference.
 - Coupling of transport and geochemical reactions by the sequential non-iterative approach.
 - Benchmarks against analytical solutions (Ogata–Banks; Krabbenhøft and Krabbenhøft, 2008)
@@ -34,4 +40,4 @@ version 1.0.0, a minor version may contain breaking changes.
 - Continuous integration of the tests on Linux, Windows and macOS, with PhreeqcRM built from
   its source distribution.
 
-[Unreleased]: https://github.com/matteomasi/EKRem/commits/main
+[Unreleased]: https://github.com/matteomasi/SimEK.jl/commits/main

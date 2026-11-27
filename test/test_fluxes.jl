@@ -4,7 +4,7 @@
 # B(x) = x / (eˣ − 1) is the Bernoulli function, with B(−x) = B(x) + x.
 
 using Test
-using EKRem
+using SimEK
 
 const D = 1.0e-9   # m² s⁻¹
 

@@ -2,7 +2,7 @@
 # checks follow from mass and charge balances and from equilibrium, not from database values.
 
 using Test
-using EKRem
+using SimEK
 
 # Solution 2 introduces Na and Cl as components, so that HCl can be added to the cells
 const CALCITE_SYSTEM = """
@@ -35,7 +35,7 @@ END
         @info "No PhreeqcRM library set (see `set_phreeqcrm_library`): chemistry tests skipped"
         @test_skip false
     else
-        database = get(ENV, "EKREM_PHREEQC_DATABASE", joinpath(dirname(dirname(lib)), "database", "phreeqc.dat"))
+        database = get(ENV, "SIMEK_PHREEQC_DATABASE", joinpath(dirname(dirname(lib)), "database", "phreeqc.dat"))
         closed_system(ncells, initial) = Chemistry(ncells; database, input=CALCITE_SYSTEM, initial)
         total(chemistry, component) =
             component_concentrations(chemistry)[:, findfirst(==(component), chemistry.components)]

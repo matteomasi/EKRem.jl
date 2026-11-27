@@ -1,7 +1,7 @@
 #=
 # PHREEQC Ampere benchmark
 
-The objective of this example is to showcase the coupling between EKRem and PhreeqcRM.
+The objective of this example is to showcase the coupling between SimEK and PhreeqcRM.
 An acid front is generated at the anode, which desorbs nickel from the surface of a
 porous medium. PhreeqcRM computes the surface complexation and the aqueous speciation. The
 case is based on the benchmark of Sprocati et al. (2019), with different parameter values.
@@ -45,7 +45,7 @@ input file contains the same chemical definitions. The results are saved in the 
 PHREEQC, the anode compartment is a boundary cell with 4 kg of water in equilibrium with
 O₂(g), and the cathode is a boundary cell with a large volume of water. PHREEQC computes the
 pore diffusion coefficient as ``D_w n^m``; the exponent ``m = \ln \tau / \ln n = 1.756``
-gives the effective diffusion coefficient ``n \tau D_w`` of EKRem
+gives the effective diffusion coefficient ``n \tau D_w`` of SimEK
 (`-multi_d true 1e-9 0.4 0.0 1.756`).
 
 The PhreeqcRM library must be set (see [Installation](../../../guide/installation.md)). The
@@ -56,7 +56,7 @@ julia --project=examples examples/benchmarks/1D/1D_benchmark_phreeqc.jl
 ```
 =#
 
-using EKRem
+using SimEK
 using Plots
 using Printf
 default(; guidefontsize=13, tickfontsize=11, legendfontsize=10, linewidth=2)   # titles: default size
@@ -152,17 +152,17 @@ function read_table(file)
     rows = [parse.(Float64, split(line, '\t')) for line in lines[2:end]]
     return Dict(String(h) => [row[k] for row in rows] for (k, h) in enumerate(header))
 end
-data = joinpath(pkgdir(EKRem), "examples", "benchmarks", "1D", "data")
+data = joinpath(pkgdir(SimEK), "examples", "benchmarks", "1D", "data")
 ref = read_table(joinpath(data, "1D_benchmark_phreeqc_profiles.tsv"))
 ref_current = read_table(joinpath(data, "1D_benchmark_phreeqc_current.tsv"))
 
 J = [current_density(model, t)[1] for t in times]             # A/m²
 J_ref = ref_current["current_A"] ./ A
-@printf("Current density at 80 h: EKRem %.3f A/m², PHREEQC %.3f A/m²\n", J[end], J_ref[end]) #src
+@printf("Current density at 80 h: SimEK %.3f A/m², PHREEQC %.3f A/m²\n", J[end], J_ref[end]) #src
 #hide-end
 #md nothing #hide
 
-# In the figure below EKRem (lines) is compared with PHREEQC (points).
+# In the figure below SimEK (lines) is compared with PHREEQC (points).
 # In the panel (a) the concentrations of the ions and pH are shown, together with the pH on the right axis.
 # The panel (b) shows the surface species concentrations. The panel (c) shows the contribution 
 # of each ion to the electrical conductivity of the porous medium, calculated as
@@ -171,7 +171,7 @@ J_ref = ref_current["current_A"] ./ A
 #hide-begin
 σ(z, D, c) = FARADAY^2 / (GAS_CONSTANT * 298.15) * z^2 * porosity * tortuosity * D .* c
 
-# Profiles at 80 h: EKRem (lines) and PHREEQC (points, in every sixth cell)
+# Profiles at 80 h: SimEK (lines) and PHREEQC (points, in every sixth cell)
 x = coordinates(model)
 x_ref = ref["x_m"]
 marks = 1:6:length(x_ref)
@@ -224,7 +224,7 @@ scatter!(p3, [NaN], [NaN]; color=:gray, label="PHREEQC", marker...)
 
 # (d) Current density as a function of time
 p4 = plot(; title="(d) Current density", xlabel="t (h)", ylabel="J (A/m²)", legend=:bottomright)
-plot!(p4, times ./ hour, J; color=:black, label="EKRem")
+plot!(p4, times ./ hour, J; color=:black, label="SimEK")
 scatter!(p4, ref_current["time_h"][2:end], J_ref[2:end]; color=:black, label="PHREEQC", marker...)
 
 figure = plot(p1, p2, p3, p4; layout=(2, 2), size=(1000, 800), margin=5Plots.mm)

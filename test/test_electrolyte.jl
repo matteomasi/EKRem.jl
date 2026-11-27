@@ -1,5 +1,5 @@
 using Test
-using EKRem
+using SimEK
 
 @testset "Properties of electrolyte solutions" begin
     # Debye length of a 10 mmol/L 1:1 electrolyte in water at 25 °C: about 3.04 nm, 

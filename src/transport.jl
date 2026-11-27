@@ -33,7 +33,7 @@
 Minimum wall-clock time (s) between two updates of the progress line shown during a run
 when `progress=true`. The default is 0.5 s; 
 It can be changed by setting the variable: 
-`EKRem.PROGRESS_INTERVAL[] = 5.0`.
+`SimEK.PROGRESS_INTERVAL[] = 5.0`.
 """
 const PROGRESS_INTERVAL = Ref(0.5)
 

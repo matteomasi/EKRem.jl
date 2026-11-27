@@ -41,7 +41,7 @@ julia --project=examples examples/benchmarks/1D/1D_trace_electromigration.jl
 ```
 =#
 
-using EKRem
+using SimEK
 using Plots
 using Printf
 using SpecialFunctions: erfc
@@ -101,7 +101,7 @@ xf = range(0, L; length=400)   # analytical solutions, drawn behind the points
 for (k, t) in enumerate(times)
     plot!(p1, xf .* 100, exact.(xf, t / porosity) ./ c_in; color=:black, label=k == 1 ? "analytical" : "")
 end
-println("    t (s)   x(c = cᵢₙ/2), EKRem   x(c = cᵢₙ/2), analytical   max |c − c_exact| / cᵢₙ")
+println("    t (s)   x(c = cᵢₙ/2), SimEK   x(c = cᵢₙ/2), analytical   max |c − c_exact| / cᵢₙ")
 for (k, t) in enumerate(times)
     c = concentration(model, "T+", t)
     @printf(
@@ -115,7 +115,7 @@ for (k, t) in enumerate(times)
         p1,
         x[1:10:end] .* 100,
         c[1:10:end] ./ c_in;
-        label=@sprintf("EKRem, t = %.0f h", t / 3600),
+        label=@sprintf("SimEK, t = %.0f h", t / 3600),
         markercolor=colors[k],
         markerstrokewidth=0,
         markersize=6,
@@ -129,7 +129,7 @@ scatter!(
     p2,
     x[1:30:end] .* 100,
     electric_potential(model, times[end])[1:30:end];
-    label=@sprintf("EKRem, t = %.0f h", times[end] / 3600),
+    label=@sprintf("SimEK, t = %.0f h", times[end] / 3600),
     markercolor=colors[end],
     markerstrokewidth=0,
     markersize=6,

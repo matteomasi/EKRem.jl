@@ -39,7 +39,7 @@ julia --project=examples examples/benchmarks/1D/1D_binary_fixed_potential.jl
 ```
 =#
 
-using EKRem
+using SimEK
 using Plots
 using Printf
 default(; guidefontsize=13, tickfontsize=11, legendfontsize=10)   # titles: default size
@@ -116,7 +116,7 @@ scatter!(
     p1,
     x[marks] .* 1e3,
     concentration(model, "Na+", t_end)[marks];
-    label="EKRem, Na⁺",
+    label="SimEK, Na⁺",
     marker=:square,
     markercolor=:white,
     markersize=6,
@@ -125,7 +125,7 @@ scatter!(
     p1,
     x[marks] .* 1e3,
     concentration(model, "Cl-", t_end)[marks];
-    label="EKRem, Cl⁻",
+    label="SimEK, Cl⁻",
     marker=:circle,
     markercolor=:black,
     markersize=6,
@@ -136,7 +136,7 @@ scatter!(
     p2,
     x[marks] .* 1e3,
     electric_potential(model, t_end)[marks];
-    label="EKRem",
+    label="SimEK",
     markercolor=:black,
     markerstrokewidth=0,
     markersize=6,

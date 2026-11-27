@@ -1,15 +1,15 @@
-# EKRem Development Makefile
+# SimEK Development Makefile
 # Provides common development commands for the project.
 #
 # All commands call Julia, so the Makefile works in PowerShell, cmd and POSIX shells alike.
 # The task logic is in scripts/dev.jl. The development tools (Aqua, Coverage,
 # JuliaFormatter) are installed by `make install-dev` in the shared Julia environment
-# `ekrem-dev`; they are not dependencies of EKRem.
+# `simek-dev`; they are not dependencies of SimEK.
 #
 # The PhreeqcRM tests require the PhreeqcRM library, set once with
 # `set_phreeqcrm_library(path)` (saved in LocalPreferences.toml). It can be overridden on
 # the command line:
-#     make test EKREM_PHREEQCRM=C:/path/to/PhreeqcRM.dll
+#     make test SIMEK_PHREEQCRM=C:/path/to/PhreeqcRM.dll
 
 # Variables
 JULIA := julia

@@ -6,7 +6,7 @@ represented by one Julia function with the same name and arguments. Functions th
 an `IRM_RESULT` status throw a [`PhreeqcRMError`](@ref) on failure, with the message
 returned by `RM_GetErrorString`.
 
-Only the functions required by EKRem are wrapped. The shared library is selected with
+Only the functions required by SimEK are wrapped. The shared library is selected with
 [`set_phreeqcrm_library`](@ref); see [`phreeqcrm_library`](@ref) for the order of precedence.
 """
 module LibPhreeqcRM
@@ -42,13 +42,13 @@ end
 # ------------------------------------------------------------------------------------------
 # Shared library
 
-const ENV_KEY = "EKREM_PHREEQCRM"
+const ENV_KEY = "SIMEK_PHREEQCRM"
 const PREFERENCE_KEY = "phreeqcrm_library"
 
 const _handle = Ref{Ptr{Cvoid}}(C_NULL)
 const _path = Ref{String}("")
 
-_package() = parentmodule(@__MODULE__)   # EKRem, owner of the preference
+_package() = parentmodule(@__MODULE__)   # SimEK, owner of the preference
 
 """
     set_phreeqcrm_library(path; save=true)
@@ -75,11 +75,11 @@ end
 """
     phreeqcrm_library() -> Union{String, Nothing}
 
-Path of the PhreeqcRM library used by EKRem, or `nothing` if no library has been set. The
+Path of the PhreeqcRM library used by SimEK, or `nothing` if no library has been set. The
 library is selected in the following order of precedence:
 
 1. the library loaded in the current session by [`set_phreeqcrm_library`](@ref);
-2. the environment variable `EKREM_PHREEQCRM`;
+2. the environment variable `SIMEK_PHREEQCRM`;
 3. the preference saved by `set_phreeqcrm_library` in a `LocalPreferences.toml` file of
    the active project or of another environment in the load path.
 """

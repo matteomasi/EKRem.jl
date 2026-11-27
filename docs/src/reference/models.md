@@ -1,7 +1,7 @@
 # Models
 
 ```@docs
-EKRem
+SimEK
 Model1D
 run!
 ```

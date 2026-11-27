@@ -1,10 +1,10 @@
 # Installation
 
-EKRem requires Julia 1.10 or later. The package is not registered; it is installed from its
+SimEK requires Julia 1.10 or later. The package is not registered; it is installed from its
 repository with the Julia package manager:
 
 ```julia
-pkg> add https://github.com/matteomasi/EKRem
+pkg> add https://github.com/matteomasi/SimEK.jl
 ```
 
 ## PhreeqcRM library
@@ -18,7 +18,7 @@ its documentation. Models without geochemical reactions do not require the libra
 The path of the library is set once, with the project activated:
 
 ```julia
-using EKRem
+using SimEK
 set_phreeqcrm_library("C:/path/to/PhreeqcRM.dll")    # libphreeqcrm.so on Linux
 ```
 
@@ -31,7 +31,7 @@ function is called in the global environment, the setting applies to all project
 The library is selected in the following order of precedence:
 
 1. the library loaded in the current session;
-2. the environment variable `EKREM_PHREEQCRM`;
+2. the environment variable `SIMEK_PHREEQCRM`;
 3. the saved preference.
 
 The PHREEQC databases (for example `phreeqc.dat`) are part of the PhreeqcRM distribution,

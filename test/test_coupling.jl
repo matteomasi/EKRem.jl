@@ -1,7 +1,7 @@
 # Tests of the coupling of transport and geochemical reactions in Model1D, on a small grid.
 
 using Test
-using EKRem
+using SimEK
 
 const NACL_SYSTEM = """
 SOLUTION 1
@@ -53,7 +53,7 @@ END
         @info "No PhreeqcRM library set (see `set_phreeqcrm_library`): coupling tests skipped"
         @test_skip false
     else
-        database = get(ENV, "EKREM_PHREEQC_DATABASE", joinpath(dirname(dirname(lib)), "database", "phreeqc.dat"))
+        database = get(ENV, "SIMEK_PHREEQC_DATABASE", joinpath(dirname(dirname(lib)), "database", "phreeqc.dat"))
         grid = collect(range(0, 0.01; length=21))
         column(input, initial, left, right; kwargs...) = Model1D(;
             length=0.01,

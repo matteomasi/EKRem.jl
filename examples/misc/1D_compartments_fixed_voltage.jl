@@ -20,7 +20,7 @@ julia --project=examples examples/misc/1D_compartments_fixed_voltage.jl
 ```
 =#
 
-using EKRem
+using SimEK
 using Plots
 using Printf
 default(; guidefontsize=13, tickfontsize=11, legendfontsize=10)   # titles: default size

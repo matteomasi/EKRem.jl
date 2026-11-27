@@ -23,7 +23,7 @@ selected_output(::Chemistry)
 ## PhreeqcRM functions
 
 ```@docs
-EKRem.LibPhreeqcRM
+SimEK.LibPhreeqcRM
 ```
 
 The functions are described in the
@@ -31,7 +31,7 @@ The functions are described in the
 The following functions are available:
 
 ```@eval
-using EKRem, Markdown
-names_rm = sort(filter(n -> startswith(string(n), "RM_"), names(EKRem.LibPhreeqcRM; all=true)))
+using SimEK, Markdown
+names_rm = sort(filter(n -> startswith(string(n), "RM_"), names(SimEK.LibPhreeqcRM; all=true)))
 Markdown.parse(join(("`$n`" for n in names_rm), ", ") * ".")
 ```

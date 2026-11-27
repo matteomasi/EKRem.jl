@@ -1,5 +1,5 @@
 using Test
-using EKRem
+using SimEK
 
 @testset "Physical constants" begin
     @test FARADAY ≈ 96485.33212 rtol = 1.0e-10

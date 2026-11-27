@@ -2,7 +2,7 @@
 # analytical solutions are in the examples/ folder.
 
 using Test
-using EKRem
+using SimEK
 
 const SPECIES = [Species("Na+", 1, 1.33e-9), Species("Cl-", -1, 2.03e-9), Species("OH-", -1, 5.27e-9)]
 
@@ -159,22 +159,22 @@ end
 
 @testset "Progress report" begin
     io = IOBuffer()
-    p = EKRem.Progress(0.0, 1000.0; io, interval=2.0)
-    EKRem.show_progress!(p, 100.0)
+    p = SimEK.Progress(0.0, 1000.0; io, interval=2.0)
+    SimEK.show_progress!(p, 100.0)
     @test isempty(take!(io))                 # no update during the first interval
     p.start -= 3.0                           # as if the run had started 3 s ago
-    EKRem.show_progress!(p, 500.0)
+    SimEK.show_progress!(p, 500.0)
     @test occursin("50 % (t = 500 s of 1000 s)", String(take!(io)))
-    EKRem.show_progress!(p, 1000.0; final=true)
+    SimEK.show_progress!(p, 1000.0; final=true)
     @test occursin("100 %", String(take!(io)))   # the final line is always printed
 
     # The default interval is taken from the global setting
-    default = EKRem.PROGRESS_INTERVAL[]
+    default = SimEK.PROGRESS_INTERVAL[]
     try
-        EKRem.PROGRESS_INTERVAL[] = 10.0
-        @test EKRem.Progress(0.0, 1.0).interval == 10.0
+        SimEK.PROGRESS_INTERVAL[] = 10.0
+        @test SimEK.Progress(0.0, 1.0).interval == 10.0
     finally
-        EKRem.PROGRESS_INTERVAL[] = default
+        SimEK.PROGRESS_INTERVAL[] = default
     end
 end
 
@@ -207,7 +207,7 @@ end
 end
 
 @testset "Residual of the transport equations" begin
-    # The residual evaluated by EKRem (without derivatives) agrees with the assembly of
+    # The residual evaluated by SimEK (without derivatives) agrees with the assembly of
     # VoronoiFVM, for the three formulations, with electroosmosis and for electrode
     # compartments
     c = Dict("Na+" => 10.0, "Cl-" => 10.0, "OH-" => 1.0e-3)
@@ -244,10 +244,10 @@ end
         u = copy(model.state)
         u[1:(end - 1), :] .*= 1 .+ 0.1 .* sin.((1:(size(u, 1) - 1)) .+ 7 .* (1:size(u, 2))')   # perturbed state
         u[end, :] .+= 0.01 .* cos.(1:size(u, 2))
-        state, f = EKRem.ode_function(model.problem, u, 0.0)
+        state, f = SimEK.ode_function(model.problem, u, 0.0)
         r, r_vfvm = similar(vec(u)), similar(vec(u))
         f.f(r, vec(u), state, 0.0)
-        EKRem.VoronoiFVM.eval_rhs!(r_vfvm, vec(u), state, 0.0)
+        SimEK.VoronoiFVM.eval_rhs!(r_vfvm, vec(u), state, 0.0)
         @test r ≈ r_vfvm rtol = 1.0e-12
     end
 end

@@ -1,15 +1,15 @@
-# EKRem.jl
+# SimEK.jl
 
-EKRem is a Julia package for the simulation and design of electrokinetic remediation systems. 
+SimEK is a Julia package for the simulation and design of electrokinetic (EK) remediation systems. 
 
 Electrokinetic remediation (EKR) is a technique for removing contaminants from porous media by applying an electric field, which induces the transport of contaminants through the medium (Reddy and Cameselle, 2009). EKR has been successfully employed for the treatment of soils, sediments and groundwater contaminated by a wide variety of pollutants such as heavy metals, organic compounds, and radionuclides (Masi et al., 2017; Wen et al., 2021).
 
-The mathematical description of EKR therefore requires the coupled simulation of species transport, electrochemical processes, and geochemical reactions (Sprocati et al., 2019). In EKRem, multicomponent electrokinetic transport is described by the Nernst–Planck equations, the electric potential by either the Poisson or the charge-conservation equation, and geochemical reactions are computed by [PhreeqcRM](https://github.com/usgs-coupled/phreeqcrm). 
+The mathematical description of EKR therefore requires the coupled simulation of species transport, electrochemical processes, and geochemical reactions (Sprocati et al., 2019). In SimEK, multicomponent electrokinetic transport is described by the Nernst–Planck equations, the electric potential by either the Poisson or the charge-conservation equation, and geochemical reactions are computed by [PhreeqcRM](https://github.com/usgs-coupled/phreeqcrm). 
 
 The equations are discretised in space by the Voronoi finite volume method ([VoronoiFVM.jl](https://github.com/WIAS-PDELib/VoronoiFVM.jl)). The Nernst–Planck fluxes are approximated using the Scharfetter–Gummel scheme. The resulting differential–algebraic system is integrated in time with adaptive implicit methods from [OrdinaryDiffEq.jl](https://github.com/SciML/OrdinaryDiffEq.jl).
 
-EKRem is intended to support the interpretation of laboratory experiments and the design of field treatments.
-Depending on the geometry of the system and the dimensionality of the electric field, EKR configurations can be represented using one-, two-, or three-dimensional models. Accordingly, EKRem provides three model classes:
+SimEK is intended to support the interpretation of laboratory experiments and the design of field treatments.
+Depending on the geometry of the system and the dimensionality of the electric field, EKR configurations can be represented using one-, two-, or three-dimensional models. Accordingly, SimEK provides three model classes:
 - `Model1D` for columns and laboratory cells;
 - `Model2D` for two-dimensional laboratory setups and cross-sections of field installations;
 - `Model3D` for full three-dimensional field installations.
@@ -17,7 +17,7 @@ Depending on the geometry of the system and the dimensionality of the electric f
 
 ## Status
 
-EKRem is in a pre-alpha stage; currently, only `Model1D` is implemented. It includes:
+SimEK is in a pre-alpha stage; currently, only `Model1D` is implemented. It includes:
 
 - the electric potential described by the Poisson equation (`Poisson()`), by charge conservation in an electroneutral solution (`ChargeConservation()`) or by a fixed field (`FixedField()`);
 - boundaries in contact with reservoirs of fixed composition (`Reservoir`) or with well-mixed electrode compartments in which water electrolysis takes place (`Compartment`);
@@ -29,11 +29,11 @@ EKRem is in a pre-alpha stage; currently, only `Model1D` is implemented. It incl
 
 ## Getting started
 
-EKRem requires Julia 1.10 or later. The package is not registered yet; it is installed from this repository with the Julia package manager:
+SimEK requires Julia 1.10 or later. The package is not registered yet; it is installed from this repository with the Julia package manager:
 
 ```julia
 julia> ]
-pkg> add https://github.com/matteomasi/EKRem
+pkg> add https://github.com/matteomasi/SimEK.jl
 ```
 
 Models with geochemical reactions also require the PhreeqcRM shared library, which is installed separately (see [PhreeqcRM library](#phreeqcrm-library)). Models without geochemical reactions, such as the example below, do not require it.
@@ -43,7 +43,7 @@ Models with geochemical reactions also require the PhreeqcRM shared library, whi
 The following example simulates the electromigration of a trace cation (T⁺) through a 10 cm porous column saturated with a 0.1 M NaCl solution. The cation enters from the reservoir at the anode, and a voltage of 1 V is applied between the two ends of the column. The potential is described by the Poisson equation, and the profiles are saved after 10⁴ and 10⁵ s.
 
 ```julia
-using EKRem
+using SimEK
 
 species = [Species("Na+", 1, 1.33e-9), Species("Cl-", -1, 2.03e-9), Species("T+", 1, 1.0e-9)]
 background = Dict("Na+" => 100.0, "Cl-" => 100.0) # mol/m³
@@ -100,20 +100,20 @@ pkg> test
 The PhreeqcRM shared library (version 3.8.6 or later) is not distributed with the package. Its path is set once, in the Julia REPL with the project activated:
 
 ```julia
-using EKRem
+using SimEK
 set_phreeqcrm_library("C:/path/to/PhreeqcRM.dll")
 ```
 
 The path is saved as a preference in `LocalPreferences.toml` next to the active `Project.toml`, and it is used automatically in later sessions and by the tests. Calling the function in the global environment makes the setting apply to all projects. `set_phreeqcrm_library(path; save=false)` loads a library for the current session only, and `phreeqcrm_library()` returns the path in use.
 
-The library is selected in the following order of precedence: the library loaded in the current session, the environment variable `EKREM_PHREEQCRM`, and the saved preference.
+The library is selected in the following order of precedence: the library loaded in the current session, the environment variable `SIMEK_PHREEQCRM`, and the saved preference.
 
-Without a library, the PhreeqcRM tests are skipped. By default, the tests read the database from `../database/phreeqc.dat` relative to the library; another file can be given in `EKREM_PHREEQC_DATABASE`.
+Without a library, the PhreeqcRM tests are skipped. By default, the tests read the database from `../database/phreeqc.dat` relative to the library; another file can be given in `SIMEK_PHREEQC_DATABASE`.
 
 
 ## Contributing
 
-Contributions to EKRem are welcome, from questions and bug reports to pull requests with new features, fixes or documentation. Questions and bug reports are submitted through the [issue tracker](https://github.com/matteomasi/EKRem/issues). Changes to the code should be discussed in an issue before a pull request is opened. The procedure and the conventions for tests, examples and documentation are described in [CONTRIBUTING.md](CONTRIBUTING.md).
+Contributions to SimEK are welcome, from questions and bug reports to pull requests with new features, fixes or documentation. Questions and bug reports are submitted through the [issue tracker](https://github.com/matteomasi/SimEK.jl/issues). Changes to the code should be discussed in an issue before a pull request is opened. The procedure and the conventions for tests, examples and documentation are described in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 
 ## License

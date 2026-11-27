@@ -2,8 +2,8 @@
 
 using Test
 using TOML
-using EKRem
-using EKRem.LibPhreeqcRM
+using SimEK
+using SimEK.LibPhreeqcRM
 
 const CALCITE_INPUT = """
 SOLUTION 1  Pure water
@@ -24,18 +24,18 @@ END
     # The path is saved in LocalPreferences.toml next to the given Project.toml. A temporary
     # project is used, so that no real project is modified.
     mktempdir() do dir
-        uuid = string(Base.PkgId(EKRem).uuid)
+        uuid = string(Base.PkgId(SimEK).uuid)
         project = joinpath(dir, "Project.toml")
-        write(project, "[deps]\nEKRem = \"$uuid\"\n")
+        write(project, "[deps]\nSimEK = \"$uuid\"\n")
         library = joinpath(dir, "lib", "PhreeqcRM.dll")
         LibPhreeqcRM._save_library(library; project_toml=project)
         prefs = TOML.parsefile(joinpath(dir, "LocalPreferences.toml"))
-        @test prefs["EKRem"]["phreeqcrm_library"] == library
+        @test prefs["SimEK"]["phreeqcrm_library"] == library
         # Saving again replaces the previous value
         LibPhreeqcRM._save_library("other.dll"; project_toml=project)
-        @test TOML.parsefile(joinpath(dir, "LocalPreferences.toml"))["EKRem"]["phreeqcrm_library"] == "other.dll"
+        @test TOML.parsefile(joinpath(dir, "LocalPreferences.toml"))["SimEK"]["phreeqcrm_library"] == "other.dll"
         # The project file itself is not modified
-        @test read(project, String) == "[deps]\nEKRem = \"$uuid\"\n"
+        @test read(project, String) == "[deps]\nSimEK = \"$uuid\"\n"
     end
 end
 
@@ -45,7 +45,7 @@ end
         @info "No PhreeqcRM library set (see `set_phreeqcrm_library`): PhreeqcRM tests skipped"
         @test_skip false
     else
-        database = get(ENV, "EKREM_PHREEQC_DATABASE", joinpath(dirname(dirname(lib)), "database", "phreeqc.dat"))
+        database = get(ENV, "SIMEK_PHREEQC_DATABASE", joinpath(dirname(dirname(lib)), "database", "phreeqc.dat"))
         @test isfile(database)
 
         mktempdir() do dir

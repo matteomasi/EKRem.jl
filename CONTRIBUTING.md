@@ -1,12 +1,12 @@
-# Contributing to EKRem
+# Contributing to SimEK
 
-Contributions to EKRem are welcome, from questions and bug reports to pull requests with
+Contributions to SimEK are welcome, from questions and bug reports to pull requests with
 new features, fixes or documentation. This document describes how each kind of
 contribution is handled and how the project is maintained.
 
 ## Questions
 
-1. Search the [issue tracker](https://github.com/matteomasi/EKRem/issues) for an existing
+1. Search the [issue tracker](https://github.com/matteomasi/SimEK.jl/issues) for an existing
    issue on the same topic.
 2. If none is found, open a new issue and apply the label `question`.
 
@@ -16,12 +16,12 @@ should be consulted first.
 
 ## Bug reports
 
-1. Search the [issue tracker](https://github.com/matteomasi/EKRem/issues) for an existing
+1. Search the [issue tracker](https://github.com/matteomasi/SimEK.jl/issues) for an existing
    issue on the same problem.
 2. If none is found, open a new issue with the label `bug`. The report should contain:
    - a minimal script that reproduces the problem, and the full error message or a
      description of the unexpected result;
-   - the version of EKRem (or the commit hash), the output of `versioninfo()` and the
+   - the version of SimEK (or the commit hash), the output of `versioninfo()` and the
      operating system;
    - for problems involving geochemical reactions, the version of PhreeqcRM, the
      thermodynamic database and the PHREEQC input.
@@ -43,7 +43,7 @@ bugs, together with the reference solution.
    ```
 
    The tests of the geochemical coupling require the PhreeqcRM shared library, set with
-   `set_phreeqcrm_library(path)` or with the environment variable `EKREM_PHREEQCRM`.
+   `set_phreeqcrm_library(path)` or with the environment variable `SIMEK_PHREEQCRM`.
    Without the library, these tests are skipped.
 4. Make the change, and add tests for it.
 5. Check the change:
@@ -77,7 +77,7 @@ can be opened anyway, and help will be provided to complete it.
 
 ## Releases
 
-EKRem follows [Semantic Versioning](https://semver.org/). A release is made by the
+SimEK follows [Semantic Versioning](https://semver.org/). A release is made by the
 maintainer:
 
 1. the version in `Project.toml` is increased (`make bump-patch`, `make bump-minor` or
@@ -87,7 +87,7 @@ maintainer:
 
 ## Support and governance
 
-EKRem is developed and maintained by Matteo Masi. Issues and pull requests are reviewed on a
+SimEK is developed and maintained by Matteo Masi. Issues and pull requests are reviewed on a
 best-effort basis, usually within two weeks. Decisions on the scope and the design of the
 package are taken by the maintainer, after discussion in the corresponding issue.
 Contributors whose work is merged are acknowledged in the release notes.

@@ -33,7 +33,7 @@ or a library. Complete simulations belong in `examples/`.
 
 Without a PhreeqcRM library, the tests of the geochemical reactions are skipped. By
 default, the tests read the database `../database/phreeqc.dat` relative to the library;
-another file is set with the environment variable `EKREM_PHREEQC_DATABASE`.
+another file is set with the environment variable `SIMEK_PHREEQC_DATABASE`.
 
 ## Documentation
 
@@ -42,7 +42,7 @@ The documentation is built with [Documenter.jl](https://documenter.juliadocs.org
 `docs/src`; the example pages are generated from the scripts in `examples/` by
 [Literate.jl](https://fredrikekre.github.io/Literate.jl/), which runs them and writes their
 output and figures into the pages. An example is run again only when the script, the files in
-the `data/` folder next to it, or the source code and dependencies of EKRem (`src/`,
+the `data/` folder next to it, or the source code and dependencies of SimEK (`src/`,
 `Project.toml`) have changed since the previous build; `make docs-rerun` runs all of them
 again. In the scripts, lines ending with `#src` are omitted from the pages, and lines
 starting with `#md` appear only in the pages.
