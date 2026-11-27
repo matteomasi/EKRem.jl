@@ -11,12 +11,9 @@ LocalPreferences.toml
 *.jl.*.mem
 lcov.info
 
-# Documentation build (Documenter.jl, DocumenterVitepress.jl), pages generated from the
-# examples, and Node.js packages of VitePress
+# Documentation build (Documenter.jl) and pages generated from the examples
 docs/build/
 docs/src/examples/
-docs/node_modules/
-docs/package-lock.json
 
 # Log file written by PhreeqcRM in the working directory
 phreeqc.log

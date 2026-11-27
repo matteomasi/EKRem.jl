@@ -1,30 +1,40 @@
-# Documentation of SimEK: Documenter.jl with the VitePress backend (DocumenterVitepress.jl).
-# The example scripts are converted to documentation pages by Literate.jl, which runs them
-# and writes their output and figures into the pages. A script is run again only when it,
-# the data in its folder or the source code of SimEK have changed since the last build.
+# Documentation of SimEK, built with Documenter.jl. The example scripts are converted to
+# documentation pages by Literate.jl, which runs them and writes their output and figures into
+# the pages. A script is run again only when it, the data in its folder or the source code of
+# SimEK have changed since the last build.
 #
 # Usage (from the repository root):
-#     julia --project=docs docs/make.jl          # static site in docs/build/1
-#     julia --project=docs docs/make.jl serve    # local server with live reload
+#     julia --project=docs docs/make.jl          # static site in docs/build
+#     julia --project=docs docs/make.jl serve    # local server with live reload (LiveServer.jl)
 #     julia --project=docs docs/make.jl rerun    # run all examples again
-#
-# The VitePress packages (docs/package.json) are installed by npm during the first build,
-# which requires internet access. Node.js is provided by DocumenterVitepress, except on
-# Windows, where DocumenterVitepress does not run VitePress: there, the site is built or
-# served by the npm scripts of docs/package.json, with a system installation of Node.js.
 
 ENV["GKSwstype"] = "100"   # GR (Plots) without a display window
 
-using Documenter
-using DocumenterVitepress
-using SimEK
-using Literate
-using SHA
-
-const SERVE = "serve" in ARGS
-const RERUN = "rerun" in ARGS
 const ROOT = dirname(@__DIR__)
 const SRC = joinpath(@__DIR__, "src")
+const RERUN = "rerun" in ARGS
+
+# LiveServer builds the documentation by running this script, serves the site and runs the
+# script again whenever a page or a file in examples/ changes. The generated example pages
+# are not watched. (The `literate_dir` option of servedocs is not used: it fails with Windows
+# paths.)
+if "serve" in ARGS
+    using LiveServer
+    filter!(!=("serve"), ARGS)
+    servedocs(;
+        foldername=@__DIR__,
+        include_dirs=[joinpath(ROOT, "examples")],
+        skip_dirs=[joinpath(SRC, "examples")],
+        launch_browser=true,
+    )
+    exit()
+end
+
+using Documenter
+using SimEK
+using Literate
+using Base64
+using SHA
 
 # Example scripts by group; the paths are relative to examples/
 example_groups = [
@@ -71,20 +81,44 @@ function hide_regions(content)
     return join(lines, '\n')
 end
 
+# Plots shows a figure as an HTML image with the PNG data encoded in base64. The figures are
+# saved as PNG files next to the page and linked from it, which keeps the HTML pages small.
+function figures_to_files(dir, name)
+    pattern = r"```@raw html\n<img src=\"data:image/png;base64,([A-Za-z0-9+/=]+)\"[^>]*>\n```"
+    return function (content)
+        k = 0
+        return replace(content, pattern => function (block)
+            k += 1
+            file = "$name-$k.png"
+            write(joinpath(dir, file), base64decode(match(pattern, block)[1]))
+            return "![]($file)"
+        end)
+    end
+end
+
 function example_page(script, title)
     path = joinpath(ROOT, "examples", script)
     dir = joinpath(SRC, "examples", dirname(script))
-    page = joinpath(dir, replace(basename(script), ".jl" => ".md"))
+    name = splitext(basename(script))[1]
+    page = joinpath(dir, name * ".md")
     stamp = page * ".sha1"
     key = fingerprint(path)
     if RERUN || !isfile(page) || !isfile(stamp) || read(stamp, String) != key
         @info "Running example $script"
-        Literate.markdown(path, dir; documenter=true, execute=true, credit=false, preprocess=hide_regions)
+        Literate.markdown(
+            path,
+            dir;
+            documenter=true,
+            execute=true,
+            credit=false,
+            preprocess=hide_regions,
+            postprocess=figures_to_files(dir, name),
+        )
         write(stamp, key)
     else
         @info "Example $script unchanged: not run again"
     end
-    return title => joinpath("examples", replace(script, ".jl" => ".md"))
+    return title => joinpath("examples", dirname(script), name * ".md")
 end
 example_pages = [group => [example_page(s, t) for (s, t) in scripts] for (group, scripts) in example_groups]
 
@@ -92,13 +126,8 @@ makedocs(;
     modules=[SimEK],
     sitename="SimEK.jl",
     authors="Matteo Masi",
-    format=DocumenterVitepress.MarkdownVitepress(;
-        repo="github.com/matteomasi/SimEK.jl",
-        devbranch="main",
-        devurl="dev",
-        description="Simulation of electrokinetic remediation in Julia",
-        build_vitepress=!SERVE,
-    ),
+    repo=Remotes.GitHub("matteomasi", "SimEK.jl"),
+    format=Documenter.HTML(; prettyurls=get(ENV, "CI", "false") == "true", edit_link="main"),
     pages=[
         "Home" => "index.md",
         "Theory" => "theory.md",
@@ -119,13 +148,3 @@ makedocs(;
     ],
     checkdocs=:exports,
 )
-
-function vitepress(command)
-    return cd(() -> success(pipeline(`cmd /c npm run docs:$command`; stdout, stderr)), uppercasefirst(@__DIR__))
-end
-
-if Sys.iswindows()
-    SERVE ? vitepress("dev") : (vitepress("build") || error("VitePress build failed"))
-elseif SERVE
-    DocumenterVitepress.dev_docs(joinpath(@__DIR__, "build"))
-end

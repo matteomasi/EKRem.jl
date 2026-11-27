@@ -1,41 +1,21 @@
-```@raw html
----
-layout: home
+# SimEK.jl
 
-hero:
-  name: "SimEK.jl"
-  text: "Electrokinetic remediation"
-  tagline: Multicomponent ion transport in porous media under an electric field, coupled with geochemical reactions
-  actions:
-    - theme: brand
-      text: Get started
-      link: /guide/installation
-    - theme: alt
-      text: Theory
-      link: /theory
-    - theme: alt
-      text: Examples
-      link: /examples/benchmarks/1D/1D_trace_electromigration
+*Simulation of electrokinetic remediation in Julia.* SimEK models multicomponent ion
+transport in porous media under an electric field, coupled with geochemical reactions.
 
-features:
-  - title: Nernst–Planck transport
-    details: Diffusion and electromigration of any number of aqueous species, discretised by finite volumes with Scharfetter–Gummel fluxes.
-    link: /theory#transport
-  - title: Electric potential
-    details: Poisson equation, charge conservation in an electroneutral solution, or a fixed field; voltage or current control.
-    link: /theory#electric-potential
-  - title: Geochemical reactions
-    details: Equilibrium and kinetic reactions computed by PhreeqcRM in every node, with PHREEQC databases and input.
-    link: /guide/reactions
-  - title: Electrode compartments
-    details: Well-mixed anolyte and catholyte with water electrolysis and flushing.
-    link: /theory#electrode-compartments
----
-```
+- **Nernst–Planck transport.** Diffusion and electromigration of any number of aqueous
+  species, discretised by finite volumes with Scharfetter–Gummel fluxes
+  ([Theory](@ref transport)).
+- **Electric potential.** Poisson equation, charge conservation in an electroneutral
+  solution, or a fixed field; voltage or current control
+  ([Theory](@ref electric-potential)).
+- **Geochemical reactions.** Equilibrium and kinetic reactions computed by PhreeqcRM in
+  every node, with PHREEQC databases and input ([Geochemical reactions](@ref reactions-guide)).
+- **Electrode compartments.** Well-mixed anolyte and catholyte with water electrolysis and
+  flushing ([Theory](@ref electrode-compartments)).
 
-```@raw html
-<div class="vp-doc" style="width:80%; margin:auto">
-```
+To get started, see the [Installation](guide/installation.md) page and the
+[examples](examples.md).
 
 ## What is SimEK?
 
@@ -91,6 +71,3 @@ c = concentration(model, "T+", 1.0e5)
 
 The package is at a pre-alpha stage; its interface may change.
 
-```@raw html
-</div>
-```
